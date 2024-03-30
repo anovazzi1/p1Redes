@@ -194,3 +194,57 @@ void listar_informacoes_todas_musicas() {
 }
 
 
+int main() {
+    // Cadastrar algumas músicas
+    struct Music musicas[MAX_SONGS];
+    int numMusicas = 0;
+
+    struct Music musica1 = {1, "Bohemian Rhapsody", "Queen", "Inglês", "Rock", 1975};
+    struct Music musica2 = {2, "Imagine", "John Lennon", "Inglês", "Rock", 1971};
+    struct Music musica3 = {3, "La Vie En Rose", "Édith Piaf", "Francês", "Chanson", 1946};
+    struct Music musica4 = {4, "Viva la Vida", "Coldplay", "Inglês", "Pop", 2008};
+
+    if (cadastrar_musica(musica1, musicas, &numMusicas))
+        printf("Música cadastrada com sucesso!\n");
+    else
+        printf("Erro ao cadastrar música!\n");
+
+    if (cadastrar_musica(musica2, musicas, &numMusicas))
+        printf("Música cadastrada com sucesso!\n");
+    else
+        printf("Erro ao cadastrar música!\n");
+
+    if (cadastrar_musica(musica3, musicas, &numMusicas))
+        printf("Música cadastrada com sucesso!\n");
+    else
+        printf("Erro ao cadastrar música!\n");
+
+    if (cadastrar_musica(musica4, musicas, &numMusicas))
+        printf("Música cadastrada com sucesso!\n");
+    else
+        printf("Erro ao cadastrar música!\n");
+
+    // Listar todas as músicas
+    listar_informacoes_todas_musicas();
+
+    // Listar músicas lançadas em um determinado ano
+    listar_musicas_ano(1971);
+
+    // Listar músicas lançadas em um determinado ano e idioma
+    listar_musicas_idioma_ano("Inglês", 1975);
+
+    // Listar músicas de um determinado tipo
+    listar_musicas_tipo("Rock");
+
+    // Listar informações de uma música pelo ID
+    listar_informacoes_musica(3);
+
+    // Remover uma música pelo ID
+    remover_musica(2, musicas, &numMusicas);
+
+    // Listar novamente todas as músicas após a remoção
+    listar_informacoes_todas_musicas();
+
+    return 0;
+}
+main()
