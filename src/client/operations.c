@@ -1,7 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "music.h" // Inclua o cabeçalho que define a estrutura de música
+/*#include "music.h" // Inclua o cabeçalho que define a estrutura de música*/
+// music object structure
+
+struct Music {
+    int id;
+    char titulo[100];
+    char interprete[100];
+    char idioma[100];
+    char tipo[100];
+    int ano;
+};
 
 #define MAX_SONGS 1000 // Defina o número máximo de músicas que o servidor pode armazenar
 #define FILENAME "songs.csv" // Nome do arquivo CSV
@@ -247,4 +257,5 @@ int main() {
 
     return 0;
 }
-main()
+
+main();
