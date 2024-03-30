@@ -1,5 +1,6 @@
 // Admin only operations
 int cadastrar_musica(int id){
+    int a;
 
 }; // Function to register a song using an id
 int remover_musica(int id){
