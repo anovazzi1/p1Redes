@@ -43,7 +43,6 @@ int escrever_musicas(struct Music songs[], int numSongs) {
     }
 }
 
-
 // Função para cadastrar uma nova música
 int cadastrar_musica(struct Music newSong, struct Music songs[], int *numSongs) {
     if (*numSongs < MAX_SONGS) {
@@ -80,22 +79,118 @@ int remover_musica(int id, struct Music songs[], int *numSongs) {
     }
 }
 
-
-
-
-// Any User operations
-int listar_musicas_ano(int ano){
-
-};
-int listar_musicas_idioma_ano(char* idioma, int ano){
-
-}; 
-int listar_musicas_tipo(char* tipo){
-
-};
-int listar_informacoes_musica(int id){
-
-};
-int listar_informacoes_todas_musicas(){
+// Função para listar músicas lançadas em um determinado ano
+void listar_musicas_ano(int ano) {
+    struct Music songs[MAX_SONGS];
+    int numSongs = ler_musicas(songs);
     
-};
+    if (numSongs > 0) {
+        printf("Músicas lançadas no ano %d:\n", ano);
+        int found = 0;
+        for (int i = 0; i < numSongs; i++) {
+            if (songs[i].ano == ano) {
+                printf("ID: %d, Título: %s, Intérprete: %s\n", songs[i].id, songs[i].titulo, songs[i].interprete);
+                found = 1;
+            }
+        }
+        if (!found) {
+            printf("Nenhuma música encontrada para o ano %d.\n", ano);
+        }
+    } else {
+        printf("Nenhuma música encontrada.\n");
+    }
+}
+
+// Função para listar músicas lançadas em um determinado ano e de um determinado idioma
+void listar_musicas_idioma_ano(char* idioma, int ano) {
+    struct Music songs[MAX_SONGS];
+    int numSongs = ler_musicas(songs);
+    
+    if (numSongs > 0) {
+        printf("Músicas lançadas no ano %d e no idioma %s:\n", ano, idioma);
+        int found = 0;
+        for (int i = 0; i < numSongs; i++) {
+            if (songs[i].ano == ano && strcmp(songs[i].idioma, idioma) == 0) {
+                printf("ID: %d, Título: %s, Intérprete: %s\n", songs[i].id, songs[i].titulo, songs[i].interprete);
+                found = 1;
+            }
+        }
+        if (!found) {
+            printf("Nenhuma música encontrada para o ano %d e idioma %s.\n", ano, idioma);
+        }
+    } else {
+        printf("Nenhuma música encontrada.\n");
+    }
+}
+
+// Função para listar músicas de um determinado tipo
+void listar_musicas_tipo(char* tipo) {
+    struct Music songs[MAX_SONGS];
+    int numSongs = ler_musicas(songs);
+    
+    if (numSongs > 0) {
+        printf("Músicas do tipo %s:\n", tipo);
+        int found = 0;
+        for (int i = 0; i < numSongs; i++) {
+            if (strcmp(songs[i].tipo, tipo) == 0) {
+                printf("ID: %d, Título: %s, Intérprete: %s\n", songs[i].id, songs[i].titulo, songs[i].interprete);
+                found = 1;
+            }
+        }
+        if (!found) {
+            printf("Nenhuma música encontrada do tipo %s.\n", tipo);
+        }
+    } else {
+        printf("Nenhuma música encontrada.\n");
+    }
+}
+
+// Função para listar informações de uma música pelo ID
+void listar_informacoes_musica(int id) {
+    struct Music songs[MAX_SONGS];
+    int numSongs = ler_musicas(songs);
+    
+    if (numSongs > 0) {
+        int found = 0;
+        for (int i = 0; i < numSongs; i++) {
+            if (songs[i].id == id) {
+                printf("Informações da música com ID %d:\n", id);
+                printf("Título: %s\n", songs[i].titulo);
+                printf("Intérprete: %s\n", songs[i].interprete);
+                printf("Idioma: %s\n", songs[i].idioma);
+                printf("Tipo: %s\n", songs[i].tipo);
+                printf("Ano: %d\n", songs[i].ano);
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            printf("Nenhuma música encontrada com o ID %d.\n", id);
+        }
+    } else {
+        printf("Nenhuma música encontrada.\n");
+    }
+}
+
+// Função para listar informações de todas as músicas
+void listar_informacoes_todas_musicas() {
+    struct Music songs[MAX_SONGS];
+    int numSongs = ler_musicas(songs);
+    
+    if (numSongs > 0) {
+        printf("Informações de todas as músicas:\n");
+        for (int i = 0; i < numSongs; i++) {
+            printf("ID: %d\n", songs[i].id);
+            printf("Título: %s\n", songs[i].titulo);
+            printf("Intérprete: %s\n", songs[i].interprete);
+            printf("Idioma: %s\n", songs[i].idioma);
+            printf("Tipo: %s\n", songs[i].tipo);
+            printf("Ano: %d\n", songs[i].ano);
+            printf("\n");
+        }
+    } else {
+        printf("Nenhuma música encontrada.\n");
+    }
+}
+
+
