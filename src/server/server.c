@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 #define MYPORT "4950" // the port users will be connecting to
 
@@ -28,16 +29,6 @@ void sigchld_handler(int s)
 	errno = saved_errno;
 }
 
-
-// get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa)
-{
-	if (sa->sa_family == AF_INET) {
-		return &(((struct sockaddr_in*)sa)->sin_addr);
-	}
-
-	return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
@@ -95,6 +86,7 @@ int rcvAll(int socket) {
 	free(str);
 	return 0;
 }
+
 int receiveMessage(char buf[MAXBUFLEN])
 {
     int sockfd;

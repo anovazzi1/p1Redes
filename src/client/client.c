@@ -349,7 +349,5 @@ int main(int argc, char *argv[])
                 break;
             }
         }
-
-        // sendData(argv[1], argv[2]);
     }
 }
