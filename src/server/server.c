@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <signal.h>
 
 #define MYPORT "4950" // the port users will be connecting to
 
@@ -50,12 +51,12 @@ void *get_in_addr(struct sockaddr *sa)
 }
 
 int rcvAll(int socket) {
-	char buffer[BUFFER_SIZE];
-	memset(buffer, 0, BUFFER_SIZE);
+	char buffer[MAXBUFLEN];
+	memset(buffer, 0, MAXBUFLEN);
 
 	// Receive the size of the string
-	char sizeStr[BUFFER_SIZE];
-	memset(sizeStr, 0, BUFFER_SIZE);
+	char sizeStr[MAXBUFLEN];
+	memset(sizeStr, 0, MAXBUFLEN);
 	int i = 0;
 	while (1) {
 		if (recv(socket, &buffer[i], 1, 0) < 0) {
@@ -81,7 +82,7 @@ int rcvAll(int socket) {
 
 	int totalReceived = 0;
 	while (totalReceived < size) {
-		int received = recv(socket, buffer, BUFFER_SIZE - 1, 0);
+		int received = recv(socket, buffer, MAXBUFLEN - 1, 0);
 		if (received < 0) {
 			perror("Failed to receive string");
 			free(str);
@@ -180,7 +181,7 @@ int main(void)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE; // use my IP
 
-	if ((rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0) {
+	if ((rv = getaddrinfo(NULL, MYPORT, &hints, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 		return 1;
 	}

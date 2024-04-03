@@ -3,6 +3,7 @@
         "stdint.h": "c",
         "unistd.h": "c",
         "socket.h": "c",
-        "types.h": "c"
+        "types.h": "c",
+        "signal.h": "c",
     }
 }
