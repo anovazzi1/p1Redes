@@ -6,8 +6,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
 #include <netdb.h>
+#include <arpa/inet.h>
+#include <sys/wait.h>
+#include <signal.h>
 
 #define MAXBUFLEN 100
 #define SERVERPORT "4950" // the port users will be connecting to
@@ -31,55 +33,33 @@ char *intToChar(int num)
     return str;
 }
 
-int sendData(char *ip, char *data)
+int sendall(int s, char *buf, int *len)
 {
-    int sockfd;
-    struct addrinfo hints, *servinfo, *p;
-    int rv;
-    int numbytes;
+    int total = 0;        // how many bytes we've sent
+    int bytesleft = *len; // how many we have left to send
+    int n;
 
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET; // set to AF_INET to use IPv4
-    hints.ai_socktype = SOCK_DGRAM;
-
-    if ((rv = getaddrinfo(ip, SERVERPORT, &hints, &servinfo)) != 0)
-    {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        return 1;
+    while(total < *len) {
+        n = send(s, buf+total, bytesleft, 0);
+        if (n == -1) { break; }
+        total += n;
+        bytesleft -= n;
     }
 
-    // loop through all the results and make a socket
-    for (p = servinfo; p != NULL; p = p->ai_next)
-    {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype,
-                             p->ai_protocol)) == -1)
-        {
-            perror("talker: socket");
-            continue;
-        }
+    *len = total; // return number actually sent here
 
-        break;
-    }
+    return n==-1?-1:0; // return -1 on failure, 0 on success
+}
 
-    if (p == NULL)
-    {
-        fprintf(stderr, "talker: failed to create socket\n");
-        return 2;
-    }
 
-    if ((numbytes = sendto(sockfd, data, strlen(data), 0,
-                           p->ai_addr, p->ai_addrlen)) == -1)
-    {
-        perror("talker: sendto");
-        exit(1);
-    }
 
-    freeaddrinfo(servinfo);
-
-    printf("talker: sent %d bytes to %s\n", numbytes, ip);
-    close(sockfd);
-
-    return 0;
+int sendData(int sockfd, char *data)
+{
+    int oldLen = strlen(data);
+    char *oldLenC = intToChar(oldLen);
+    strcat(oldLenC, "|");
+    strcat(oldLenC,data);
+    sendall(sockfd,oldLenC,srtlen(oldLenC));
 }
 
 char *login()
@@ -109,7 +89,7 @@ int isAdmin(char *userSecret)
     return FALSE;
 }
 
-int registerSong(char *ip)
+int registerSong(int sockfd)
 {
     printf("Register song\n");
     printf("Enter song name:\n");
@@ -153,11 +133,11 @@ int registerSong(char *ip)
     strcat(encoded, songArtist);
     strcat(encoded, "|");
     strcat(encoded, songChorus);
-    sendData(ip, encoded);
+    sendData(sockfd, encoded);
     // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
 
-int removeSong(char *ip)
+int removeSong(int sockfd)
 {
     printf("Remove song\n");
     printf("Enter song id: ");
@@ -168,11 +148,12 @@ int removeSong(char *ip)
     strcpy(encoded, "7");
     strcat(encoded, "|");
     strcat(encoded, intToChar(songId));
-    sendData(ip, encoded);
+    sendData(sockfd, encoded);
+
     // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
 
-int listSongsByYear(char *ip)
+int listSongsByYear(int sockfd)
 {
     printf("List songs by year\n");
     printf("Enter year: ");
@@ -183,11 +164,11 @@ int listSongsByYear(char *ip)
     strcpy(encoded, "1");
     strcat(encoded, "|");
     strcat(encoded, intToChar(ano));
-    sendData(ip, encoded);
+    sendData(sockfd, encoded);
     // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
 
-int listSongsByLanguageAndYear(char *ip)
+int listSongsByLanguageAndYear(int sockfd)
 {
     printf("List songs by language and year\n");
     printf("Enter language: ");
@@ -202,11 +183,11 @@ int listSongsByLanguageAndYear(char *ip)
     strcat(encoded, intToChar(ano));
     strcat(encoded, "|");
     strcat(encoded, idioma);
-    sendData(ip, encoded);
+    sendData(sockfd, encoded);
     // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
 
-int listSongsByType(char *ip)
+int listSongsByType(int sockfd)
 {
     printf("List songs by type\n");
     printf("Enter type: ");
@@ -217,11 +198,11 @@ int listSongsByType(char *ip)
     strcpy(encoded, "3");
     strcat(encoded, "|");
     strcat(encoded, type);
-    sendData(ip, encoded);
+    sendData(sockfd, encoded);
     // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
 
-int listSongInformation(char *ip)
+int listSongInformation(int sockfd)
 {
     printf("List song information\n");
     printf("Enter song id: ");
@@ -232,22 +213,70 @@ int listSongInformation(char *ip)
     strcpy(encoded, "4");
     strcat(encoded, "|");
     strcat(encoded, intToChar(songId));
-    sendData(ip, encoded);
+    sendData(sockfd, encoded);
     // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
 
-int listAllSongInformation(char *ip)
+int listAllSongInformation(int sockfd)
 {
     printf("Listing all song information\n");
     // concat operation code in a string before sending
     char encoded[MAXBUFLEN];
     strcpy(encoded, "5");
-    sendData(ip, encoded);
+    sendData(sockfd, encoded);
     // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
 
 int main(int argc, char *argv[])
 {
+    int sockfd, numbytes;  
+	char buf[MAXDATASIZE];
+	struct addrinfo hints, *servinfo, *p;
+	int rv;
+	char s[INET6_ADDRSTRLEN];
+
+	if (argc != 2) {
+	    fprintf(stderr,"usage: client hostname\n");
+	    exit(1);
+	}
+
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+
+	if ((rv = getaddrinfo(argv[1], PORT, &hints, &servinfo)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		return 1;
+	}
+
+	// loop through all the results and connect to the first we can
+	for(p = servinfo; p != NULL; p = p->ai_next) {
+		if ((sockfd = socket(p->ai_family, p->ai_socktype,
+				p->ai_protocol)) == -1) {
+			perror("client: socket");
+			continue;
+		}
+
+		if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+			perror("client: connect");
+			close(sockfd);
+			continue;
+		}
+
+		break;
+	}
+
+	if (p == NULL) {
+		fprintf(stderr, "client: failed to connect\n");
+		return 2;
+	}
+
+	inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
+			s, sizeof s);
+	printf("client: connecting to %s\n", s);
+
+	freeaddrinfo(servinfo);
+
     char *userSecret = "";
     int userOption;
     if (argc != 2)
@@ -295,25 +324,25 @@ int main(int argc, char *argv[])
             switch (operation)
             {
             case 1:
-                listSongsByYear(argv[1]);
+                listSongsByYear(sockfd);
                 break;
             case 2:
-                listSongsByLanguageAndYear(argv[1]);
+                listSongsByLanguageAndYear(sockfd);
                 break;
             case 3:
-                listSongsByType(argv[1]);
+                listSongsByType(sockfd);
                 break;
             case 4:
-                listSongInformation(argv[1]);
+                listSongInformation(sockfd);
                 break;
             case 5:
-                listAllSongInformation(argv[1]);
+                listAllSongInformation(sockfd);
                 break;
             case 6:
-                registerSong(argv[1]);
+                registerSong(sockfd);
                 break;
             case 7:
-                removeSong(argv[1]);
+                removeSong(sockfd);
                 break;
             default:
                 printf("Invalid option\n");
