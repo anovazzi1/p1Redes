@@ -74,26 +74,33 @@ int sendData(char *ip, char *data)
 
 char *login(char *hostname)
 {
-    printf("Login\n");
-    printf("Enter your username: ");
-    char username[100];
-    scanf("%s", username);
-    printf("Enter your password: ");
-    char password[100];
-    scanf("%s", password);
-    user u = {username, password, operation : 0};
-    sendData(hostname, "hello");
-    // TODO: receive data from server with user secret
-    return "userSecret";
+    //select 1 if you are admin and 2 if you are a user
+    printf("Select an option\n");
+    printf("1. Admin\n");
+    printf("2. User\n");
+    int option;
+    scanf("%d", &option);
+    if(option==1)
+    {
+        return "admin";
+    }
+    else
+    {
+        return "user";
+    }
+
 }
 
 int isAdmin(char *userSecret)
 {
-    // TODO check user secret and tell if is an admin or not
-    return TRUE;
+    if(strcmp(userSecret, "admin")==0)
+    {
+        return TRUE;
+    }
+    return FALSE;
 }
 
-int registerSong(char *userSecret)
+int registerSong()
 {
     printf("Register song\n");
     printf("Enter song name: ");
@@ -111,10 +118,13 @@ int registerSong(char *userSecret)
     printf("Enter song artist: ");
     char songArtist[100];
     scanf("%s", songArtist);
+    printf("Enter song chorus: ");
+    char songChorus[100];
+    scanf("%s", songChorus);
     //TODO: send data to server and receive song id in response
 }
 
-int removeSong(char *userSecret)
+int removeSong()
 {
     printf("Remove song\n");
     printf("Enter song id: ");
@@ -123,7 +133,7 @@ int removeSong(char *userSecret)
     //TODO: send data to server and receive confirmation in response
 }
 
-int listSongsByYear(char *userSecret)
+int listSongsByYear()
 {
     printf("List songs by year\n");
     printf("Enter year: ");
@@ -134,7 +144,7 @@ int listSongsByYear(char *userSecret)
 
 }
 
-int listSongsByLanguageAndYear(char *userSecret)
+int listSongsByLanguageAndYear()
 {
     printf("List songs by language and year\n");
     printf("Enter language: ");
@@ -148,7 +158,7 @@ int listSongsByLanguageAndYear(char *userSecret)
 
 }
 
-int listSongsByType(char *userSecret)
+int listSongsByType()
 {
     printf("List songs by type\n");
     printf("Enter type: ");
@@ -158,7 +168,7 @@ int listSongsByType(char *userSecret)
     //print list of songs
 }
 
-int listSongInformation(char *userSecret)
+int listSongInformation()
 {
     printf("List song information\n");
     printf("Enter song id: ");
@@ -170,7 +180,7 @@ int listSongInformation(char *userSecret)
 
 }
 
-int listAllSongInformation(char *userSecret)
+int listAllSongInformation()
 {
     printf("Listing all song information\n");
     //TODO: send data to server and receive list of songs in response
@@ -193,7 +203,6 @@ int main(int argc, char *argv[])
         if (strcmp(userSecret, "")==0)
         {
             printf("1. Login\n");
-            printf("2. Register (WIP)\n");
 
             printf("Enter your choice: ");
             scanf("%d", &userOption);
@@ -202,9 +211,6 @@ int main(int argc, char *argv[])
             case 1:
                 userSecret = login(argv[1]);
                 break;
-            // case 2:
-            //     printf("Register\n");
-            //     break;
             default:
                 printf("Invalid option\n");
                 break;

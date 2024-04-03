@@ -7,4 +7,5 @@ struct Music {
     char idioma[100];
     char tipo[100];
     int ano;
+    char refrao[];
 };
