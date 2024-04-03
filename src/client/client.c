@@ -59,7 +59,8 @@ int sendData(int sockfd, char *data)
     char *oldLenC = intToChar(oldLen);
     strcat(oldLenC, "|");
     strcat(oldLenC,data);
-    sendall(sockfd,oldLenC,srtlen(oldLenC));
+    int *len = &oldLen;
+    sendall(sockfd,oldLenC,len);
 }
 
 char *login()
@@ -87,6 +88,16 @@ int isAdmin(char *userSecret)
         return TRUE;
     }
     return FALSE;
+}
+
+void *get_in_addr(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET)
+    {
+        return &(((struct sockaddr_in *)sa)->sin_addr);
+    }
+
+    return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
 int registerSong(int sockfd)
