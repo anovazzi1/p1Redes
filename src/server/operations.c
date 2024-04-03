@@ -1,29 +1,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-/*#include "music.h" // Inclua o cabeçalho que define a estrutura de música*/
-// music object structure
 
+// Estrutura de objeto de música
 struct Music {
     int id;
     char titulo[100];
     char interprete[100];
     char idioma[100];
     char tipo[100];
+    char refrao[256]; // Novo campo adicionado para o refrão
     int ano;
 };
 
-#define MAX_SONGS 1000 // Defina o número máximo de músicas que o servidor pode armazenar
+#define MAX_SONGS 1000 // Número máximo de músicas que o servidor pode armazenar
 #define FILENAME "songs.csv" // Nome do arquivo CSV
 
-// Função para ler as músicas do arquivo CSV e carregá-las na memória
+// Função para ler músicas do arquivo CSV e carregá-las na memória
 int ler_musicas(struct Music songs[]) {
     FILE *file = fopen(FILENAME, "r");
     if (file != NULL) {
         int numSongs = 0;
         char line[256];
         while (fgets(line, sizeof(line), file)) {
-            sscanf(line, "%d;%99[^;];%99[^;];%99[^;];%99[^;];%d\n", &songs[numSongs].id, songs[numSongs].titulo, songs[numSongs].interprete, songs[numSongs].idioma, songs[numSongs].tipo, &songs[numSongs].ano);
+            sscanf(line, "%d;%99[^;];%99[^;];%99[^;];%99[^;];%[^;];%d\n", &songs[numSongs].id, songs[numSongs].titulo, songs[numSongs].interprete, songs[numSongs].idioma, songs[numSongs].tipo, songs[numSongs].refrao, &songs[numSongs].ano);
             numSongs++;
             if (numSongs >= MAX_SONGS) {
                 printf("Limite máximo de músicas alcançado!\n");
@@ -38,16 +38,15 @@ int ler_musicas(struct Music songs[]) {
     }
 }
 
-
-// Função para escrever as músicas no arquivo CSV
+// Função para escrever músicas no arquivo CSV
 int escrever_musicas(struct Music songs[], int numSongs) {
     FILE *file = fopen(FILENAME, "w");
     if (file != NULL) {
         for (int i = 0; i < numSongs; i++) {
-            fprintf(file, "%d;%s;%s;%s;%s;%d\n", songs[i].id, songs[i].titulo, songs[i].interprete, songs[i].idioma, songs[i].tipo, songs[i].ano);
+            fprintf(file, "%d;%s;%s;%s;%s;%s;%d\n", songs[i].id, songs[i].titulo, songs[i].interprete, songs[i].idioma, songs[i].tipo, songs[i].refrao, songs[i].ano);
         }
         fclose(file);
-        return 1; // Sucesso ao escrever as músicas
+        return 1; // Sucesso ao escrever músicas
     } else {
         printf("Erro ao abrir o arquivo %s para escrita!\n", FILENAME);
         return 0; // Falha ao abrir o arquivo
@@ -73,9 +72,9 @@ int cadastrar_musica(struct Music newSong, struct Music songs[], int *numSongs) 
         newSong.id = gerar_id_unico(songs, *numSongs);
         songs[(*numSongs)++] = newSong;
         if (escrever_musicas(songs, *numSongs))
-            return 1; // Sucesso ao cadastrar e escrever as músicas no arquivo
+            return 1; // Sucesso ao cadastrar e escrever músicas no arquivo
         else
-            return 0; // Falha ao escrever as músicas no arquivo
+            return 0; // Falha ao escrever músicas no arquivo
     } else {
         return 0; // Limite máximo de músicas alcançado
     }
@@ -83,7 +82,15 @@ int cadastrar_musica(struct Music newSong, struct Music songs[], int *numSongs) 
 
 // Função para remover uma música pelo ID
 int remover_musica(int id, struct Music songs[], int *numSongs) {
+    printf("IDs presentes na lista antes da remoção:\n");
+    for (int i = 0; i < *numSongs; i++) {
+        printf("%d ", songs[i].id);
+    }
+    printf("\n");
+    
+    
     int i, found = 0;
+
     for (i = 0; i < *numSongs; i++) {
         if (songs[i].id == id) {
             found = 1;
@@ -95,14 +102,16 @@ int remover_musica(int id, struct Music songs[], int *numSongs) {
             songs[i] = songs[i + 1];
         }
         (*numSongs)--;
-        if (escrever_musicas(songs, *numSongs))
-            return 1; // Sucesso ao remover e escrever as músicas no arquivo
+        if (escrever_musicas(songs, *numSongs)) // Atualizar arquivo CSV após remover música
+            return 1; // Sucesso ao remover e escrever músicas no arquivo
         else
-            return 0; // Falha ao escrever as músicas no arquivo
+            return 0; // Falha ao escrever músicas no arquivo
     } else {
+        printf("Música com ID %d não encontrada.\n", id);
         return 0; // Música não encontrada
     }
 }
+
 
 // Função para listar músicas lançadas em um determinado ano
 void listar_musicas_ano(int ano) {
@@ -184,6 +193,7 @@ void listar_informacoes_musica(int id) {
                 printf("Intérprete: %s\n", songs[i].interprete);
                 printf("Idioma: %s\n", songs[i].idioma);
                 printf("Tipo: %s\n", songs[i].tipo);
+                printf("Refrão: %s\n", songs[i].refrao); // Mostrar o refrão
                 printf("Ano: %d\n", songs[i].ano);
                 found = 1;
                 break;
@@ -210,6 +220,7 @@ void listar_informacoes_todas_musicas() {
             printf("Intérprete: %s\n", songs[i].interprete);
             printf("Idioma: %s\n", songs[i].idioma);
             printf("Tipo: %s\n", songs[i].tipo);
+            printf("Refrão: %s\n", songs[i].refrao); // Mostrar o refrão
             printf("Ano: %d\n", songs[i].ano);
             printf("\n");
         }
@@ -218,26 +229,81 @@ void listar_informacoes_todas_musicas() {
     }
 }
 
+void teste_cadastro_remocao() {
+    struct Music musicas[MAX_SONGS];
+    int numMusicas = 0;
+
+    // Função para cadastrar uma nova música
+    int cadastrar_teste(struct Music newSong) {
+        if (cadastrar_musica(newSong, musicas, &numMusicas)) {
+            printf("Música cadastrada com sucesso!\n");
+            return 1;
+        } else {
+            printf("Erro ao cadastrar música!\n");
+            return 0;
+        }
+    }
+
+    // Cadastrar quatro músicas de exemplo
+    struct Music m1 = {0, "As Quatro Estações", "Antônio Vivaldi", "Italiano", "Clássica", "Refrão 1", 1723};
+    struct Music m2 = {0, "Bohemian Rhapsody", "Queen", "Inglês", "Rock", "Refrão 2", 1975};
+    struct Music m3 = {0, "Imagine", "John Lennon", "Inglês", "Rock", "Refrão 3", 1971};
+    struct Music m4 = {0, "Garota de Ipanema", "Tom Jobim", "Português", "Bossa Nova", "Refrão 4", 1962};
+
+    cadastrar_teste(m1);
+    cadastrar_teste(m2);
+    cadastrar_teste(m3);
+    cadastrar_teste(m4);
+
+    // Listar informações de todas as músicas antes da remoção
+    printf("\n--- Informações de todas as músicas ANTES da remoção ---\n");
+    listar_informacoes_todas_musicas();
+
+
+
+    // Remover a música com ID específico (por exemplo, ID = 2)
+    char mensagem[] = "53|2|1";
+    
+    char lenbyte[3]; // Será o tamanho máximo de 2 dígitos + caractere nulo
+    char op[2]; // Será o tamanho máximo de 1 dígito + caractere nulo
+    char dados[100]; // Ajuste o tamanho conforme necessário
+    
+    // Usando sscanf para dividir a string
+    sscanf(mensagem, "%[^|]|%[^|]|%[^\n]", lenbyte, op, dados);
+
+    int id_remover = atoi(dados);
+    if (remover_musica(id_remover, musicas, &numMusicas)) {
+        printf("\nMúsica com ID %d removida com sucesso!\n", id_remover);
+    } else {
+        printf("\nErro ao remover música com ID %d!\n", id_remover);
+    }
+
+    // Listar informações de todas as músicas após a remoção
+    printf("\n--- Informações de todas as músicas APÓS a remoção ---\n");
+    listar_informacoes_todas_musicas();
+}
+
+/*int main() {
+    teste_cadastro_remocao();
+    return 0;
+}*/
+
+
 
 
 
 int main() {
     struct Music musicas[MAX_SONGS];
-    int numMusicas = 0;
-    
+    int numMusicas = ler_musicas(musicas); // Lendo músicas do arquivo
+    //teste_cadastro_remocao();
+
     char mensagem1[] = "53|1|Bohemian Rhapsody|Queen|Inglês|Rock|1975";
-    char mensagem[] = "53|2|1";
-    char mensagem3[] = "53|3|1900";
-    char mensagem4[] = "53|4|portugues|1900";
-    char mensagem5[] = "53|5|rock";
-    char mensagem6[] = "53|6|1";
+    char mensagem[] = "53|2|2";
+    char mensagem3[] = "53|3|1975";
+    char mensagem4[] = "53|4|Inglês|1975";
+    char mensagem5[] = "53|5|Rock";
+    char mensagem6[] = "53|6|3";
     char mensagem7[] = "53|7";
-
-    
-     
-    
-    
-
 
     char lenbyte[3]; // Será o tamanho máximo de 2 dígitos + caractere nulo
     char op[2]; // Será o tamanho máximo de 1 dígito + caractere nulo
@@ -246,14 +312,11 @@ int main() {
     // Usando sscanf para dividir a string
     sscanf(mensagem, "%[^|]|%[^|]|%[^\n]", lenbyte, op, dados);
     
-    printf("lenbyte = \"%s\"\n", lenbyte);
-    printf("op = \"%s\"\n", op);
-    printf("Dados = \"%s\"\n", dados);
 
     switch (atoi(op)) {
         case 1: {
             struct Music newSong;
-            sscanf(dados, "%99[^|]|%99[^|]|%99[^|]|%99[^|]|%d", newSong.titulo, newSong.interprete, newSong.idioma, newSong.tipo, &newSong.ano);
+            sscanf(dados, "%99[^|]|%99[^|]|%99[^|]|%99[^|]|%99[^|]|%d", newSong.titulo, newSong.interprete, newSong.idioma, newSong.tipo, newSong.refrao, &newSong.ano);
             if (cadastrar_musica(newSong, musicas, &numMusicas))
                 printf("Música cadastrada com sucesso!\n");
             else
@@ -261,8 +324,8 @@ int main() {
             break;
         }
         case 2: {
-            int id = atoi(dados);
-            if (remover_musica(id, musicas, &numMusicas))
+            int id_remover = atoi(dados);
+            if (remover_musica(id_remover, musicas, &numMusicas))
                 printf("Música removida com sucesso!\n");
             else
                 printf("Erro ao remover música!\n");
@@ -270,7 +333,6 @@ int main() {
         }
         case 3: {
             int ano = atoi(dados);
-            printf("ano = \"%d\"\n", ano);
             listar_musicas_ano(ano);
             break;
         }
