@@ -242,6 +242,7 @@ int main(void)
             {
                 char buf[MAXBUFLEN];
                 printf("listener: packet contains \"%s\"\n", buf);
+				
                 //decode data
                 //do operation
             }
