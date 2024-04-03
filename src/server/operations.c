@@ -283,16 +283,109 @@ void teste_cadastro_remocao() {
     listar_informacoes_todas_musicas();
 }
 
-/*int main() {
+/*int main(){
     teste_cadastro_remocao();
     return 0;
 }*/
 
 
+// Função para listar informações de uma música pelo ID em uma string
+char* listar_informacoes_musica_string(int id) {
+    struct Music songs[MAX_SONGS];
+    int numSongs = ler_musicas(songs);
+    
+    char* result = (char*) malloc(512); // Inicializa a string de resultado com tamanho suficiente para a mensagem de erro
+    result[0] = '\0'; // Garante que a string de resultado comece vazia
 
+    if (numSongs > 0) {
+        int found = 0;
+        for (int i = 0; i < numSongs; i++) {
+            if (songs[i].id == id) {
+                snprintf(result, 512, "Informações da música com ID %d:\nTítulo: %s\nIntérprete: %s\nIdioma: %s\nTipo: %s\nRefrão: %s\nAno: %d\n",
+                         id, songs[i].titulo, songs[i].interprete, songs[i].idioma, songs[i].tipo, songs[i].refrao, songs[i].ano);
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            strcpy(result, "Nenhuma música encontrada com o ID especificado.\n");
+        }
+    } else {
+        strcpy(result, "Nenhuma música encontrada.\n");
+    }
 
+    return result;
+}
+
+// Função para listar informações de todas as músicas em uma string
+char* listar_informacoes_todas_musicas_string() {
+    struct Music songs[MAX_SONGS];
+    int numSongs = ler_musicas(songs);
+    
+    char* result = (char*) malloc(512); // Inicializa a string de resultado com tamanho suficiente para a mensagem de erro
+    result[0] = '\0'; // Garante que a string de resultado comece vazia
+
+    if (numSongs > 0) {
+        char temp[512]; // Buffer temporário para construção da string
+        for (int i = 0; i < numSongs; i++) {
+            snprintf(temp, sizeof(temp), "ID: %d\nTítulo: %s\nIntérprete: %s\nIdioma: %s\nTipo: %s\nRefrão: %s\nAno: %d\n\n",
+                     songs[i].id, songs[i].titulo, songs[i].interprete, songs[i].idioma, songs[i].tipo, songs[i].refrao, songs[i].ano);
+            strcat(result, temp); // Concatena a nova string ao resultado
+        }
+    } else {
+        strcpy(result, "Nenhuma música encontrada.\n");
+    }
+
+    return result;
+}
+
+// Função para listar músicas lançadas em um determinado ano em uma string
+char* listar_musicas_ano_string(int ano) {
+    struct Music songs[MAX_SONGS];
+    int numSongs = ler_musicas(songs);
+    
+    char* result = (char*) malloc(512); // Inicializa a string de resultado com tamanho suficiente para a mensagem de erro
+    result[0] = '\0'; // Garante que a string de resultado comece vazia
+
+    if (numSongs > 0) {
+        int found = 0;
+        for (int i = 0; i < numSongs; i++) {
+            if (songs[i].ano == ano) {
+                char temp[512]; // Buffer temporário para construção da string
+                snprintf(temp, sizeof(temp), "ID: %d, Título: %s, Intérprete: %s\n", songs[i].id, songs[i].titulo, songs[i].interprete);
+                strcat(result, temp); // Concatena a nova string ao resultado
+                found = 1;
+            }
+        }
+        if (!found) {
+            strcpy(result, "Nenhuma música encontrada para o ano especificado.\n");
+        }
+    } else {
+        strcpy(result, "Nenhuma música encontrada.\n");
+    }
+
+    return result;
+}
 
 int main() {
+    // Exemplo de uso das funções
+    char* todasMusicas = listar_informacoes_todas_musicas_string();
+    printf("Informações de todas as músicas:\n%s\n", todasMusicas);
+    free(todasMusicas);
+
+    char* musicaID = listar_informacoes_musica_string(2);
+    printf("%s\n", musicaID);
+    free(musicaID);
+
+    char* musicasAno = listar_musicas_ano_string(1975);
+    printf("%s\n", musicasAno);
+    free(musicasAno);
+
+    return 0;
+}
+
+
+/*int main() {
     struct Music musicas[MAX_SONGS];
     int numMusicas = ler_musicas(musicas); // Lendo músicas do arquivo
     //teste_cadastro_remocao();
@@ -365,4 +458,4 @@ int main() {
     }
 
     return 0;
-}
+}*/
