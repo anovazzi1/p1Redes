@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#define MAXBUFLEN 100
 #define SERVERPORT "4950" // the port users will be connecting to
 #define TRUE 1
 #define FALSE 0
@@ -20,6 +21,67 @@ struct user
 };
 
 typedef struct user user;
+
+int encodeData(int code, void *data, char encoded[MAXBUFLEN])
+{
+    switch (code)
+    {
+    case 1:
+        // list songs by year
+        strcpy(encoded, "1");
+        strcat(encoded, "|");
+        strcat(encoded, data);
+        break;
+    case 2:
+        // list songs by language and year
+        strcpy(encoded, "2");
+        strcat(encoded, "|");
+        strcat(encoded, ((char **)data)[0]);
+        strcat(encoded, "|");
+        strcat(encoded, ((char **)data)[1]);
+        break;
+    case 3:
+        // list songs by type
+        strcpy(encoded, "3");
+        strcat(encoded, "|");
+        strcat(encoded, data);
+        break;
+    case 4:
+        // list song information
+        strcpy(encoded, "4");
+        strcat(encoded, "|");
+        strcat(encoded, data);
+        break;
+    case 5:
+        // list all song information
+        strcpy(encoded, "5");
+        break;
+    case 6:
+        // register song
+        strcpy(encoded, "6");
+        strcat(encoded, "|");
+        strcat(encoded, ((char **)data)[0]);
+        strcat(encoded, "|");
+        strcat(encoded, ((char **)data)[1]);
+        strcat(encoded, "|");
+        strcat(encoded, ((char **)data)[2]);
+        strcat(encoded, "|");
+        strcat(encoded, ((char **)data)[3]);
+        strcat(encoded, "|");
+        strcat(encoded, ((char **)data)[4]);
+        strcat(encoded, "|");
+        strcat(encoded, ((char **)data)[5]);
+        break;
+    case 7:
+        // remove song
+        strcpy(encoded, "7");
+        strcat(encoded, "|");
+        strcat(encoded, data);
+        break;
+    default:
+        return 1;
+    }
+}
 
 int sendData(char *ip, char *data)
 {
@@ -72,15 +134,15 @@ int sendData(char *ip, char *data)
     return 0;
 }
 
-char *login(char *hostname)
+char *login()
 {
-    //select 1 if you are admin and 2 if you are a user
+    // select 1 if you are admin and 2 if you are a user
     printf("Select an option\n");
     printf("1. Admin\n");
     printf("2. User\n");
     int option;
     scanf("%d", &option);
-    if(option==1)
+    if (option == 1)
     {
         return "admin";
     }
@@ -88,19 +150,18 @@ char *login(char *hostname)
     {
         return "user";
     }
-
 }
 
 int isAdmin(char *userSecret)
 {
-    if(strcmp(userSecret, "admin")==0)
+    if (strcmp(userSecret, "admin") == 0)
     {
         return TRUE;
     }
     return FALSE;
 }
 
-int registerSong()
+int registerSong(char* ip)
 {
     printf("Register song\n");
     printf("Enter song name: ");
@@ -121,30 +182,35 @@ int registerSong()
     printf("Enter song chorus: ");
     char songChorus[100];
     scanf("%s", songChorus);
-    //TODO: send data to server and receive song id in response
+
+    // TODO: send data to server and receive song id in response
 }
 
-int removeSong()
+int removeSong(char* ip)
 {
     printf("Remove song\n");
     printf("Enter song id: ");
     int songId;
     scanf("%d", &songId);
-    //TODO: send data to server and receive confirmation in response
+    // TODO: send data to server and receive confirmation in response
 }
 
-int listSongsByYear()
+int listSongsByYear(char* ip)
 {
     printf("List songs by year\n");
     printf("Enter year: ");
     int year;
     scanf("%d", &year);
-    //TODO: send data to server and receive list of songs in response
-    //print list of songs
+    // concat year with operation code in a string before sending
+    char data[100];
+    sprintf(data, "%d", year);
+    char encoded[MAXBUFLEN];
+    encodeData(1, data, encoded);
+    sendData(ip, encoded);
 
 }
 
-int listSongsByLanguageAndYear()
+int listSongsByLanguageAndYear(char* ip)
 {
     printf("List songs by language and year\n");
     printf("Enter language: ");
@@ -153,44 +219,40 @@ int listSongsByLanguageAndYear()
     printf("Enter year: ");
     int year;
     scanf("%d", &year);
-    //TODO: send data to server and receive list of songs in response
-    //print list of songs
-
+    // TODO: send data to server and receive list of songs in response
+    // print list of songs
 }
 
-int listSongsByType()
+int listSongsByType(char* ip)
 {
     printf("List songs by type\n");
     printf("Enter type: ");
     char type[100];
     scanf("%s", type);
-    //TODO: send data to server and receive list of songs in response
-    //print list of songs
+    // TODO: send data to server and receive list of songs in response
+    // print list of songs
 }
 
-int listSongInformation()
+int listSongInformation(char* ip)
 {
     printf("List song information\n");
     printf("Enter song id: ");
     int songId;
     scanf("%d", &songId);
-    //TODO: send data to server and receive song information in response
-    //print song information
-    
-
+    // TODO: send data to server and receive song information in response
+    // print song information
 }
 
-int listAllSongInformation()
+int listAllSongInformation(char* ip)
 {
     printf("Listing all song information\n");
-    //TODO: send data to server and receive list of songs in response
-    //print list of songs
-
+    // TODO: send data to server and receive list of songs in response
+    // print list of songs
 }
 
 int main(int argc, char *argv[])
 {
-    char *userSecret="";
+    char *userSecret = "";
     int userOption;
     if (argc != 2)
     {
@@ -200,7 +262,7 @@ int main(int argc, char *argv[])
     while (TRUE)
     {
         /// show options for user login or register
-        if (strcmp(userSecret, "")==0)
+        if (strcmp(userSecret, "") == 0)
         {
             printf("1. Login\n");
 
@@ -209,7 +271,7 @@ int main(int argc, char *argv[])
             switch (userOption)
             {
             case 1:
-                userSecret = login(argv[1]);
+                userSecret = login();
                 break;
             default:
                 printf("Invalid option\n");
@@ -220,7 +282,7 @@ int main(int argc, char *argv[])
         {
             printf("User options\n");
             int operation;
-            //show any user music options
+            // show any user music options
             printf("1. List songs by year\n");
             printf("2. List songs by language and year\n");
             printf("3. List songs by type\n");
@@ -228,7 +290,7 @@ int main(int argc, char *argv[])
             printf("5. List all song information\n");
             if (isAdmin(userSecret))
             {
-                //show admin music options
+                // show admin music options
                 printf("6. Register song\n");
                 printf("7. Remove song\n");
             }
@@ -237,25 +299,25 @@ int main(int argc, char *argv[])
             switch (operation)
             {
             case 1:
-                listSongsByYear(userSecret);
+                listSongsByYear(argv[1]);
                 break;
             case 2:
-                listSongsByLanguageAndYear(userSecret);
+                listSongsByLanguageAndYear(argv[1]);
                 break;
             case 3:
-                listSongsByType(userSecret);
+                listSongsByType(argv[1]);
                 break;
             case 4:
-                listSongInformation(userSecret);
+                listSongInformation(argv[1]);
                 break;
             case 5:
-                listAllSongInformation(userSecret);
+                listAllSongInformation(argv[1]);
                 break;
             case 6:
-                registerSong(userSecret);
+                registerSong(argv[1]);
                 break;
             case 7:
-                removeSong(userSecret);
+                removeSong(argv[1]);
                 break;
             default:
                 printf("Invalid option\n");
