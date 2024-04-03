@@ -13,74 +13,22 @@
 #define SERVERPORT "4950" // the port users will be connecting to
 #define TRUE 1
 #define FALSE 0
-struct user
+struct Music
 {
-    char *username;
-    char *password;
-    int operation;
+    int id;
+    char titulo[100];
+    char interprete[100];
+    char idioma[100];
+    char tipo[100];
+    int ano;
+    char refrao[];
 };
 
-typedef struct user user;
-
-int encodeData(int code, void *data, char encoded[MAXBUFLEN])
+char *intToChar(int num)
 {
-    switch (code)
-    {
-    case 1:
-        // list songs by year
-        strcpy(encoded, "1");
-        strcat(encoded, "|");
-        strcat(encoded, data);
-        break;
-    case 2:
-        // list songs by language and year
-        strcpy(encoded, "2");
-        strcat(encoded, "|");
-        strcat(encoded, ((char **)data)[0]);
-        strcat(encoded, "|");
-        strcat(encoded, ((char **)data)[1]);
-        break;
-    case 3:
-        // list songs by type
-        strcpy(encoded, "3");
-        strcat(encoded, "|");
-        strcat(encoded, data);
-        break;
-    case 4:
-        // list song information
-        strcpy(encoded, "4");
-        strcat(encoded, "|");
-        strcat(encoded, data);
-        break;
-    case 5:
-        // list all song information
-        strcpy(encoded, "5");
-        break;
-    case 6:
-        // register song
-        strcpy(encoded, "6");
-        strcat(encoded, "|");
-        strcat(encoded, ((char **)data)[0]);
-        strcat(encoded, "|");
-        strcat(encoded, ((char **)data)[1]);
-        strcat(encoded, "|");
-        strcat(encoded, ((char **)data)[2]);
-        strcat(encoded, "|");
-        strcat(encoded, ((char **)data)[3]);
-        strcat(encoded, "|");
-        strcat(encoded, ((char **)data)[4]);
-        strcat(encoded, "|");
-        strcat(encoded, ((char **)data)[5]);
-        break;
-    case 7:
-        // remove song
-        strcpy(encoded, "7");
-        strcat(encoded, "|");
-        strcat(encoded, data);
-        break;
-    default:
-        return 1;
-    }
+    char *str = malloc(10 * sizeof(char));
+    sprintf(str, "%d", num);
+    return str;
 }
 
 int sendData(char *ip, char *data)
@@ -161,93 +109,141 @@ int isAdmin(char *userSecret)
     return FALSE;
 }
 
-int registerSong(char* ip)
+int registerSong(char *ip)
 {
     printf("Register song\n");
-    printf("Enter song name: ");
+    printf("Enter song name:\n");
     char songName[100];
-    scanf("%s", songName);
-    printf("Enter song year: ");
+    getchar();
+    fgets(songName, sizeof(songName), stdin);
+    // Remove the trailing newline character
+    songName[strcspn(songName, "\n")] = 0;
+    printf("Enter song year:\n");
     int songYear;
     scanf("%d", &songYear);
-    printf("Enter song language: ");
+    printf("Enter song language:\n");
     char songLanguage[100];
     scanf("%s", songLanguage);
-    printf("Enter song type: ");
+    printf("Enter song type:\n");
     char songType[100];
-    scanf("%s", songType);
-    printf("Enter song artist: ");
+    getchar();
+    fgets(songType, sizeof(songType), stdin);
+    songType[strcspn(songType, "\n")] = 0;
+    printf("Enter song artist:\n");
     char songArtist[100];
-    scanf("%s", songArtist);
-    printf("Enter song chorus: ");
+    getchar();
+    fgets(songArtist, sizeof(songArtist), stdin);
+    songArtist[strcspn(songArtist, "\n")] = 0;
+    printf("Enter song chorus:\n");
     char songChorus[100];
-    scanf("%s", songChorus);
-
-    // TODO: send data to server and receive song id in response
+    getchar();
+    fgets(songChorus, sizeof(songChorus), stdin);
+    songChorus[strcspn(songChorus, "\n")] = 0;
+    char encoded[MAXBUFLEN];
+    strcpy(encoded, "6");
+    strcat(encoded, "|");
+    strcat(encoded, songName);
+    strcat(encoded, "|");
+    strcat(encoded, intToChar(songYear));
+    strcat(encoded, "|");
+    strcat(encoded, songLanguage);
+    strcat(encoded, "|");
+    strcat(encoded, songType);
+    strcat(encoded, "|");
+    strcat(encoded, songArtist);
+    strcat(encoded, "|");
+    strcat(encoded, songChorus);
+    sendData(ip, encoded);
+    // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
 
-int removeSong(char* ip)
+int removeSong(char *ip)
 {
     printf("Remove song\n");
     printf("Enter song id: ");
     int songId;
     scanf("%d", &songId);
-    // TODO: send data to server and receive confirmation in response
+    // concat songId with operation code in a string before sending
+    char encoded[MAXBUFLEN];
+    strcpy(encoded, "7");
+    strcat(encoded, "|");
+    strcat(encoded, intToChar(songId));
+    sendData(ip, encoded);
+    // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
 
-int listSongsByYear(char* ip)
+int listSongsByYear(char *ip)
 {
     printf("List songs by year\n");
     printf("Enter year: ");
-    int year;
-    scanf("%d", &year);
-    // concat year with operation code in a string before sending
-    char data[100];
-    sprintf(data, "%d", year);
+    int ano;
+    scanf("%d", &ano);
+    // concat ano with operation code in a string before sending
     char encoded[MAXBUFLEN];
-    encodeData(1, data, encoded);
+    strcpy(encoded, "1");
+    strcat(encoded, "|");
+    strcat(encoded, intToChar(ano));
     sendData(ip, encoded);
-
+    // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
 
-int listSongsByLanguageAndYear(char* ip)
+int listSongsByLanguageAndYear(char *ip)
 {
     printf("List songs by language and year\n");
     printf("Enter language: ");
-    char language[100];
-    scanf("%s", language);
+    char idioma[100];
+    scanf("%s", idioma);
     printf("Enter year: ");
-    int year;
-    scanf("%d", &year);
-    // TODO: send data to server and receive list of songs in response
-    // print list of songs
+    int ano;
+    scanf("%d", &ano);
+    char encoded[MAXBUFLEN];
+    strcpy(encoded, "1");
+    strcat(encoded, "|");
+    strcat(encoded, intToChar(ano));
+    strcat(encoded, "|");
+    strcat(encoded, idioma);
+    sendData(ip, encoded);
+    // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
 
-int listSongsByType(char* ip)
+int listSongsByType(char *ip)
 {
     printf("List songs by type\n");
     printf("Enter type: ");
     char type[100];
     scanf("%s", type);
-    // TODO: send data to server and receive list of songs in response
-    // print list of songs
+    // concat type with operation code in a string before sending
+    char encoded[MAXBUFLEN];
+    strcpy(encoded, "3");
+    strcat(encoded, "|");
+    strcat(encoded, type);
+    sendData(ip, encoded);
+    // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
 
-int listSongInformation(char* ip)
+int listSongInformation(char *ip)
 {
     printf("List song information\n");
     printf("Enter song id: ");
     int songId;
     scanf("%d", &songId);
-    // TODO: send data to server and receive song information in response
-    // print song information
+    // concat songId with operation code in a string before sending
+    char encoded[MAXBUFLEN];
+    strcpy(encoded, "4");
+    strcat(encoded, "|");
+    strcat(encoded, intToChar(songId));
+    sendData(ip, encoded);
+    // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
 
-int listAllSongInformation(char* ip)
+int listAllSongInformation(char *ip)
 {
     printf("Listing all song information\n");
-    // TODO: send data to server and receive list of songs in response
-    // print list of songs
+    // concat operation code in a string before sending
+    char encoded[MAXBUFLEN];
+    strcpy(encoded, "5");
+    sendData(ip, encoded);
+    // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
 
 int main(int argc, char *argv[])
