@@ -41,8 +41,9 @@ void *get_in_addr(struct sockaddr *sa)
 	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
-int rcvAll(int socket, char *buffer, int size)
+int handleData(char *buffer)
 {
+	printf("server: received '%s'\n", buffer);
 }
 
 int main(void)
@@ -144,7 +145,7 @@ int main(void)
 			while ((numBytes = recv(new_fd, buf, MAXBUFLEN - 1, 0)) > 0)
 			{
 				buf[numBytes] = '\0'; // Null-terminate the string
-				printf("server: received '%s'\n", buf);
+				handleData(buf);
 			}
 
 			if (numBytes == -1)
