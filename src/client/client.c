@@ -59,7 +59,8 @@ int sendData(int sockfd, char *data)
     char *oldLenC = intToChar(oldLen);
     strcat(oldLenC, "|");
     strcat(oldLenC,data);
-    int *len = &oldLen;
+    int newLen = strlen(oldLenC);
+    int *len = &newLen;
     sendall(sockfd,oldLenC,len);
 }
 

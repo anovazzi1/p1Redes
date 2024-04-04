@@ -13,7 +13,7 @@
 
 #define MYPORT "4950" // the port users will be connecting to
 
-#define MAXBUFLEN 100
+#define MAXBUFLEN 1024
 
 #define BACKLOG 10	 // how many pending connections queue will hold
 
@@ -41,120 +41,8 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
-int rcvAll(int socket) {
-	char buffer[MAXBUFLEN];
-	memset(buffer, 0, MAXBUFLEN);
+int rcvAll(int socket,char *buffer, int size) {
 
-	// Receive the size of the string
-	char sizeStr[MAXBUFLEN];
-	memset(sizeStr, 0, MAXBUFLEN);
-	int i = 0;
-	while (1) {
-		if (recv(socket, &buffer[i], 1, 0) < 0) {
-			perror("Failed to receive size");
-			return -1;
-		}
-		if (buffer[i] == '|') {
-			buffer[i] = '\0';
-			break;
-		}
-		i++;
-	}
-
-	// Convert size to integer
-	int size = atoi(buffer);
-
-	// Receive the string
-	char *str = malloc(size + 1);
-	if (str == NULL) {
-		perror("Failed to allocate memory");
-		return -1;
-	}
-
-	int totalReceived = 0;
-	while (totalReceived < size) {
-		int received = recv(socket, buffer, MAXBUFLEN - 1, 0);
-		if (received < 0) {
-			perror("Failed to receive string");
-			free(str);
-			return -1;
-		}
-		buffer[received] = '\0';
-		strncat(str, buffer, received);
-		totalReceived += received;
-	}
-	free(str);
-	return 0;
-}
-
-int receiveMessage(char buf[MAXBUFLEN])
-{
-    int sockfd;
-    struct addrinfo hints, *servinfo, *p;
-    int rv;
-    int numbytes;
-    struct sockaddr_storage their_addr;
-    socklen_t addr_len;
-    char s[INET6_ADDRSTRLEN];
-
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET; // set to AF_INET to use IPv4
-    hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = AI_PASSIVE; // use my IP
-
-    if ((rv = getaddrinfo(NULL, MYPORT, &hints, &servinfo)) != 0)
-    {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        return 1;
-    }
-
-    // loop through all the results and bind to the first we can
-    for (p = servinfo; p != NULL; p = p->ai_next)
-    {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype,
-                             p->ai_protocol)) == -1)
-        {
-            perror("listener: socket");
-            continue;
-        }
-
-        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1)
-        {
-            close(sockfd);
-            perror("listener: bind");
-            continue;
-        }
-
-        break;
-    }
-
-    if (p == NULL)
-    {
-        fprintf(stderr, "listener: failed to bind socket\n");
-        return 2;
-    }
-
-    freeaddrinfo(servinfo);
-
-    printf("listener: waiting to recvfrom...\n");
-
-    addr_len = sizeof their_addr;
-    if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN - 1, 0,
-                             (struct sockaddr *)&their_addr, &addr_len)) == -1)
-    {
-        perror("recvfrom");
-        exit(1);
-    }
-
-    printf("listener: got packet from %s\n",
-           inet_ntop(their_addr.ss_family,
-                     get_in_addr((struct sockaddr *)&their_addr),
-                     s, sizeof s));
-    printf("listener: packet is %d bytes long\n", numbytes);
-    buf[numbytes] = '\0';
-    close(sockfd);
-
-    return 1;
 }
 
 int main(void)
@@ -239,9 +127,8 @@ int main(void)
 		if (!fork()) { // this is the child process
 			close(sockfd); // child doesn't need the listener
                 char buf[MAXBUFLEN];
-                printf("listener: packet contains \"%s\"\n", buf);
-                //decode data
-                //do operation
+				recv(new_fd, buf, MAXBUFLEN-1, 0);
+				printf("server: received '%s'\n",buf);
 			close(new_fd);
 			exit(0);
 		}
