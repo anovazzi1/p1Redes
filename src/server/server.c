@@ -194,6 +194,68 @@ void listar_musicas_tipo(char* tipo) {
     }
 }
 
+
+// Função para listar músicas por idioma e ano em uma string
+char* listar_musicas_idioma_ano_string(char* idioma, int ano) {
+    struct Music songs[MAX_SONGS];
+    int numSongs = ler_musicas(songs);
+    
+    char* result = (char*) malloc(512); // Inicializa a string de resultado com tamanho suficiente para a mensagem de erro
+    result[0] = '\0'; // Garante que a string de resultado comece vazia
+
+    if (numSongs > 0) {
+        int found = 0;
+        for (int i = 0; i < numSongs; i++) {
+            if (songs[i].ano == ano && strcmp(songs[i].idioma, idioma) == 0) {
+                char temp[512]; // Buffer temporário para construção da string
+                snprintf(temp, sizeof(temp), "ID: %d, Título: %s, Intérprete: %s\n", songs[i].id, songs[i].titulo, songs[i].interprete);
+                strcat(result, temp); // Concatena a nova string ao resultado
+                found = 1;
+            }
+        }
+        if (!found) {
+            strcpy(result, "Nenhuma música encontrada para o idioma e ano especificados.\n");
+        }
+    } else {
+        strcpy(result, "Nenhuma música encontrada.\n");
+    }
+
+    return result;
+}
+
+// Função para listar músicas por tipo em uma string
+char* listar_musicas_tipo_string(char* tipo) {
+    struct Music songs[MAX_SONGS];
+    int numSongs = ler_musicas(songs);
+    
+    char* result = (char*) malloc(512); // Inicializa a string de resultado com tamanho suficiente para a mensagem de erro
+    result[0] = '\0'; // Garante que a string de resultado comece vazia
+
+    if (numSongs > 0) {
+        int found = 0;
+        for (int i = 0; i < numSongs; i++) {
+            if (strcmp(songs[i].tipo, tipo) == 0) {
+                char temp[512]; // Buffer temporário para construção da string
+                snprintf(temp, sizeof(temp), "ID: %d, Título: %s, Intérprete: %s\n", songs[i].id, songs[i].titulo, songs[i].interprete);
+                strcat(result, temp); // Concatena a nova string ao resultado
+                found = 1;
+            }
+        }
+        if (!found) {
+            strcpy(result, "Nenhuma música encontrada do tipo especificado.\n");
+        }
+    } else {
+        strcpy(result, "Nenhuma música encontrada.\n");
+    }
+
+    return result;
+}
+
+
+
+
+
+
 // Função para listar informações de uma música pelo ID
 void listar_informacoes_musica(int id) {
     struct Music songs[MAX_SONGS];
@@ -389,31 +451,31 @@ int handleData(char *mensagem)
         }
         case 1: {
             int ano = atoi(dados);
-            listar_musicas_ano(ano);
+            printf("%s",listar_musicas_ano_string(ano));
             break;
         }
         case 2: {
             char idioma[100];
             int ano;
             sscanf(dados, "%[^|]|%d", idioma, &ano);
-            listar_musicas_idioma_ano(idioma, ano);
+            printf(listar_musicas_idioma_ano_string(idioma, ano));
             break;
         }
 
         case 3: {
             char tipo[100];
             sscanf(dados, "%[^\n]", tipo);
-            listar_musicas_tipo(tipo);
+            printf("%s",listar_musicas_tipo_string(tipo));
             break;
         }
 
         case 4: {
             int id = atoi(dados);
-            listar_informacoes_musica(id);
+            printf("%s",listar_informacoes_musica_string(id));
             break;
         }
         case 5: {
-            listar_informacoes_todas_musicas();
+            printf("%s",listar_informacoes_todas_musicas_string());
             break;
         }
         default:
