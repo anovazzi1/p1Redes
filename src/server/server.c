@@ -238,13 +238,10 @@ int main(void)
 
 		if (!fork()) { // this is the child process
 			close(sockfd); // child doesn't need the listener
-            while (1)
-            {
                 char buf[MAXBUFLEN];
                 printf("listener: packet contains \"%s\"\n", buf);
                 //decode data
                 //do operation
-            }
 			close(new_fd);
 			exit(0);
 		}
