@@ -51,8 +51,6 @@ int sendall(int s, char *buf, int *len)
     return n==-1?-1:0; // return -1 on failure, 0 on success
 }
 
-
-
 int sendData(int sockfd, char *data)
 {
     int oldLen = strlen(data);
@@ -183,10 +181,10 @@ int listSongsByYear(int sockfd)
 int listSongsByLanguageAndYear(int sockfd)
 {
     printf("List songs by language and year\n");
-    printf("Enter language: ");
+    printf("Enter language: \n");
     char idioma[100];
     scanf("%s", idioma);
-    printf("Enter year: ");
+    printf("Enter year: \n");
     int ano;
     scanf("%d", &ano);
     char encoded[MAXBUFLEN];
@@ -202,9 +200,11 @@ int listSongsByLanguageAndYear(int sockfd)
 int listSongsByType(int sockfd)
 {
     printf("List songs by type\n");
-    printf("Enter type: ");
+    printf("Enter type:\n");
     char type[100];
-    scanf("%s", type);
+    getchar();
+    fgets(type, sizeof(type), stdin);
+    type[strcspn(type, "\n")] = 0;
     // concat type with operation code in a string before sending
     char encoded[MAXBUFLEN];
     strcpy(encoded, "3");
