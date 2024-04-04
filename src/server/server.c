@@ -17,6 +17,29 @@
 
 #define BACKLOG 10 // how many pending connections queue will hold
 
+int sendall(int s, char *buf, int *len)
+{
+    int total = 0;        // how many bytes we've sent
+    int bytesleft = *len; // how many we have left to send
+    int n;
+
+    while(total < *len) {
+        n = send(s, buf+total, bytesleft, 0);
+        if (n == -1) { break; }
+        total += n;
+        bytesleft -= n;
+    }
+
+    *len = total; // return number actually sent here
+
+    return n==-1?-1:0; // return -1 on failure, 0 on success
+}
+
+int sendData(int sockfd, char *data)
+{
+    int len = strlen(data);
+    sendall(sockfd,data,&len);
+}
 
 struct Music {
     int id;
@@ -411,7 +434,7 @@ void *get_in_addr(struct sockaddr *sa)
 	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
-int handleData(char *mensagem)
+int handleData(char *mensagem,int sockfd)
 {
 	printf("server: received '%s'\n", mensagem);
 	struct Music musicas[MAX_SONGS];
@@ -436,22 +459,23 @@ int handleData(char *mensagem)
             struct Music newSong;
             sscanf(dados, "%99[^|]|%99[^|]|%99[^|]|%99[^|]|%99[^|]|%d", newSong.titulo, newSong.interprete, newSong.idioma, newSong.tipo, newSong.refrao, &newSong.ano);
             if (cadastrar_musica(newSong, musicas, &numMusicas))
-                printf("Música cadastrada com sucesso!\n");
+                sendData(sockfd, "Música cadastrada com sucesso!\n");
             else
-                printf("Erro ao cadastrar música!\n");
+                sendData(sockfd, "Erro ao cadastrar música!\n");
             break;
         }
         case 7: {
             int id_remover = atoi(dados);
             if (remover_musica(id_remover, musicas, &numMusicas))
-                printf("Música removida com sucesso!\n");
+                sendData(sockfd, "Música removida com sucesso!\n");
             else
-                printf("Erro ao remover música!\n");
+                sendData(sockfd, "Erro ao remover música!\n");
             break;
         }
         case 1: {
             int ano = atoi(dados);
             printf("%s",listar_musicas_ano_string(ano));
+            sendData(sockfd, listar_musicas_ano_string(ano));
             break;
         }
         case 2: {
@@ -459,6 +483,7 @@ int handleData(char *mensagem)
             int ano;
             sscanf(dados, "%[^|]|%d", idioma, &ano);
             printf(listar_musicas_idioma_ano_string(idioma, ano));
+            sendData(sockfd, listar_musicas_idioma_ano_string(idioma, ano));
             break;
         }
 
@@ -466,16 +491,18 @@ int handleData(char *mensagem)
             char tipo[100];
             sscanf(dados, "%[^\n]", tipo);
             printf("%s",listar_musicas_tipo_string(tipo));
+            sendData(sockfd, listar_musicas_tipo_string(tipo));
             break;
         }
 
         case 4: {
             int id = atoi(dados);
-            printf("%s",listar_informacoes_musica_string(id));
+            sendData(sockfd, listar_informacoes_musica_string(id));
             break;
         }
         case 5: {
             printf("%s",listar_informacoes_todas_musicas_string());
+            sendData(sockfd, listar_informacoes_todas_musicas_string());
             break;
         }
         default:
@@ -585,7 +612,7 @@ int main(void)
 			while ((numBytes = recv(new_fd, buf, MAXBUFLEN - 1, 0)) > 0)
 			{
 				buf[numBytes] = '\0'; // Null-terminate the string
-				handleData(buf);
+				handleData(buf,new_fd);
 			}
 
 			if (numBytes == -1)

@@ -105,6 +105,19 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
+void *print_result(int sockfd)
+{
+    char buf[MAXBUFLEN];
+    int numbytes;
+    if ((numbytes = recv(sockfd, buf, MAXBUFLEN - 1, 0)) == -1)
+    {
+        perror("recv");
+        exit(1);
+    }
+    buf[numbytes] = '\0';
+    printf("%s\n", buf);
+}
+
 int registerSong(int sockfd)
 {
     printf("Register song\n");
@@ -150,7 +163,7 @@ int registerSong(int sockfd)
     strcat(encoded, "|");
     strcat(encoded, intToChar(songYear));
     sendData(sockfd, encoded);
-    // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
+    print_result(sockfd);
 }
 
 int removeSong(int sockfd)
@@ -165,8 +178,7 @@ int removeSong(int sockfd)
     strcat(encoded, "|");
     strcat(encoded, intToChar(songId));
     sendData(sockfd, encoded);
-
-    // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
+    print_result(sockfd);
 }
 
 int listSongsByYear(int sockfd)
@@ -181,7 +193,7 @@ int listSongsByYear(int sockfd)
     strcat(encoded, "|");
     strcat(encoded, intToChar(ano));
     sendData(sockfd, encoded);
-    // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
+    print_result(sockfd);
 }
 
 int listSongsByLanguageAndYear(int sockfd)
@@ -200,7 +212,7 @@ int listSongsByLanguageAndYear(int sockfd)
     strcat(encoded, "|");
     strcat(encoded, intToChar(ano));
     sendData(sockfd, encoded);
-    // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
+    print_result(sockfd);
 }
 
 int listSongsByType(int sockfd)
@@ -217,7 +229,7 @@ int listSongsByType(int sockfd)
     strcat(encoded, "|");
     strcat(encoded, type);
     sendData(sockfd, encoded);
-    // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
+    print_result(sockfd);
 }
 
 int listSongInformation(int sockfd)
@@ -232,7 +244,7 @@ int listSongInformation(int sockfd)
     strcat(encoded, "|");
     strcat(encoded, intToChar(songId));
     sendData(sockfd, encoded);
-    // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
+    print_result(sockfd);
 }
 
 int listAllSongInformation(int sockfd)
@@ -242,7 +254,7 @@ int listAllSongInformation(int sockfd)
     char encoded[MAXBUFLEN];
     strcpy(encoded, "5");
     sendData(sockfd, encoded);
-    // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
+    print_result(sockfd);
 }
 
 int main(int argc, char *argv[])
