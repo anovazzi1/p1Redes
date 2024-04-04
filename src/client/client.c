@@ -11,7 +11,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-#define MAXBUFLEN 100
+#define MAXBUFLEN 1024
 #define SERVERPORT "4950" // the port users will be connecting to
 #define TRUE 1
 #define FALSE 0
@@ -23,12 +23,12 @@ struct Music
     char idioma[100];
     char tipo[100];
     int ano;
-    char refrao[];
+    char refrao[256];
 };
 
 char *intToChar(int num)
 {
-    char *str = malloc(10 * sizeof(char));
+    char *str = malloc(100 * sizeof(char));
     sprintf(str, "%d", num);
     return str;
 }
@@ -55,11 +55,17 @@ int sendData(int sockfd, char *data)
 {
     int oldLen = strlen(data);
     char *oldLenC = intToChar(oldLen);
-    strcat(oldLenC, "|");
-    strcat(oldLenC,data);
-    int newLen = strlen(oldLenC);
+    int Newlen = oldLen+ strlen(oldLenC)+1;
+    char *newLenC = intToChar(Newlen);
+    if(strlen(newLenC)>strlen(oldLenC)){
+        Newlen +=1;
+    }
+    newLenC = intToChar(Newlen);
+    strcat(newLenC, "|");
+    strcat(newLenC,data);
+    int newLen = strlen(newLenC);
     int *len = &newLen;
-    sendall(sockfd,oldLenC,len);
+    sendall(sockfd,newLenC,len);
 }
 
 char *login()
@@ -121,12 +127,12 @@ int registerSong(int sockfd)
     songType[strcspn(songType, "\n")] = 0;
     printf("Enter song artist:\n");
     char songArtist[100];
-    getchar();
+    //getchar();
     fgets(songArtist, sizeof(songArtist), stdin);
     songArtist[strcspn(songArtist, "\n")] = 0;
     printf("Enter song chorus:\n");
     char songChorus[100];
-    getchar();
+    //getchar();
     fgets(songChorus, sizeof(songChorus), stdin);
     songChorus[strcspn(songChorus, "\n")] = 0;
     char encoded[MAXBUFLEN];
@@ -134,15 +140,15 @@ int registerSong(int sockfd)
     strcat(encoded, "|");
     strcat(encoded, songName);
     strcat(encoded, "|");
-    strcat(encoded, intToChar(songYear));
+    strcat(encoded, songArtist);
     strcat(encoded, "|");
     strcat(encoded, songLanguage);
     strcat(encoded, "|");
     strcat(encoded, songType);
     strcat(encoded, "|");
-    strcat(encoded, songArtist);
-    strcat(encoded, "|");
     strcat(encoded, songChorus);
+    strcat(encoded, "|");
+    strcat(encoded, intToChar(songYear));
     sendData(sockfd, encoded);
     // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
@@ -188,11 +194,11 @@ int listSongsByLanguageAndYear(int sockfd)
     int ano;
     scanf("%d", &ano);
     char encoded[MAXBUFLEN];
-    strcpy(encoded, "1");
-    strcat(encoded, "|");
-    strcat(encoded, intToChar(ano));
+    strcpy(encoded, "2");
     strcat(encoded, "|");
     strcat(encoded, idioma);
+    strcat(encoded, "|");
+    strcat(encoded, intToChar(ano));
     sendData(sockfd, encoded);
     // TODO: RECEBER INFORMAÇÕES DO SERVIDOR E IMPRIMIR
 }
