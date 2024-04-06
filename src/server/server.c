@@ -223,14 +223,14 @@ char* listar_musicas_idioma_ano_string(char* idioma, int ano) {
     struct Music songs[MAX_SONGS];
     int numSongs = ler_musicas(songs);
     
-    char* result = (char*) malloc(512); // Inicializa a string de resultado com tamanho suficiente para a mensagem de erro
+    char* result = (char*) malloc(1000); // Inicializa a string de resultado com tamanho suficiente para a mensagem de erro
     result[0] = '\0'; // Garante que a string de resultado comece vazia
 
     if (numSongs > 0) {
         int found = 0;
         for (int i = 0; i < numSongs; i++) {
             if (songs[i].ano == ano && strcmp(songs[i].idioma, idioma) == 0) {
-                char temp[512]; // Buffer temporário para construção da string
+                char temp[1000]; // Buffer temporário para construção da string
                 snprintf(temp, sizeof(temp), "ID: %d, Título: %s, Intérprete: %s\n", songs[i].id, songs[i].titulo, songs[i].interprete);
                 strcat(result, temp); // Concatena a nova string ao resultado
                 found = 1;
@@ -251,14 +251,14 @@ char* listar_musicas_tipo_string(char* tipo) {
     struct Music songs[MAX_SONGS];
     int numSongs = ler_musicas(songs);
     
-    char* result = (char*) malloc(512); // Inicializa a string de resultado com tamanho suficiente para a mensagem de erro
+    char* result = (char*) malloc(1000); // Inicializa a string de resultado com tamanho suficiente para a mensagem de erro
     result[0] = '\0'; // Garante que a string de resultado comece vazia
 
     if (numSongs > 0) {
         int found = 0;
         for (int i = 0; i < numSongs; i++) {
             if (strcmp(songs[i].tipo, tipo) == 0) {
-                char temp[512]; // Buffer temporário para construção da string
+                char temp[1000]; // Buffer temporário para construção da string
                 snprintf(temp, sizeof(temp), "ID: %d, Título: %s, Intérprete: %s\n", songs[i].id, songs[i].titulo, songs[i].interprete);
                 strcat(result, temp); // Concatena a nova string ao resultado
                 found = 1;
@@ -335,14 +335,14 @@ char* listar_informacoes_musica_string(int id) {
     struct Music songs[MAX_SONGS];
     int numSongs = ler_musicas(songs);
     
-    char* result = (char*) malloc(512); // Inicializa a string de resultado com tamanho suficiente para a mensagem de erro
+    char* result = (char*) malloc(1000); // Inicializa a strg de resultado com tamanho suficiente para a mensagem de erro
     result[0] = '\0'; // Garante que a string de resultado comece vazia
 
     if (numSongs > 0) {
         int found = 0;
         for (int i = 0; i < numSongs; i++) {
             if (songs[i].id == id) {
-                snprintf(result, 512, "Título: %s\nArtista: %s\nIdioma: %s\nTipo: %s\nRefrão: %s\nAno: %d\n",
+                snprintf(result, 1000, "Título: %s\nArtista: %s\nIdioma: %s\nTipo: %s\nRefrão: %s\nAno: %d\n",
                         songs[i].titulo, songs[i].interprete, songs[i].idioma, songs[i].tipo, songs[i].refrao, songs[i].ano);
                 found = 1;
                 break;
@@ -367,11 +367,11 @@ char* listar_informacoes_todas_musicas_string() {
     result[0] = '\0'; // Garante que a string de resultado comece vazia
 
     if (numSongs > 0) {
-        char temp[512]; // Buffer temporário para construção da string
+        char temp[1000]; // Buffer temporário para construção da string
         for (int i = 0; i < numSongs; i++) {
             snprintf(temp, sizeof(temp), "ID: %d\nTítulo: %s\nArtista: %s\nIdioma: %s\nTipo: %s\nRefrão: %s\nAno: %d\n\n",
                      songs[i].id, songs[i].titulo, songs[i].interprete, songs[i].idioma, songs[i].tipo, songs[i].refrao, songs[i].ano);
-            strcat(result, temp); // Concatena a nova string ao resultado
+            strcat(result, temp); // Concatena a nova string ao resultdo
         }
     } else {
         strcpy(result, "Nenhuma música encontrada.\n");
@@ -385,14 +385,14 @@ char* listar_musicas_ano_string(int ano) {
     struct Music songs[MAX_SONGS];
     int numSongs = ler_musicas(songs);
     
-    char* result = (char*) malloc(512); // Inicializa a string de resultado com tamanho suficiente para a mensagem de erro
+    char* result = (char*) malloc(1000); // Inicializa a string de resultado com tamanho suficiente para a mensagem de erro
     result[0] = '\0'; // Garante que a string de resultado comece vazia
 
     if (numSongs > 0) {
         int found = 0;
         for (int i = 0; i < numSongs; i++) {
             if (songs[i].ano == ano) {
-                char temp[512]; // Buffer temporário para construção da string
+                char temp[1000]; // Buffer temporário para construção da string
                 snprintf(temp, sizeof(temp), "ID: %d, Título: %s, Artista: %s\n", songs[i].id, songs[i].titulo, songs[i].interprete);
                 strcat(result, temp); // Concatena a nova string ao resultado
                 found = 1;
@@ -482,7 +482,7 @@ int handleData(char *mensagem,int sockfd)
             char idioma[100];
             int ano;
             sscanf(dados, "%[^|]|%d", idioma, &ano);
-            printf(listar_musicas_idioma_ano_string(idioma, ano));
+            printf("%s",listar_musicas_idioma_ano_string(idioma, ano));
             sendData(sockfd, listar_musicas_idioma_ano_string(idioma, ano));
             break;
         }
