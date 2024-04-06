@@ -163,7 +163,9 @@ int registerSong(int sockfd)
     strcat(encoded, "|");
     strcat(encoded, intToChar(songYear));
     sendData(sockfd, encoded);
+    printf("==============\n\n");
     print_result(sockfd);
+    printf("==============\n");
 }
 
 int removeSong(int sockfd)
@@ -178,7 +180,9 @@ int removeSong(int sockfd)
     strcat(encoded, "|");
     strcat(encoded, intToChar(songId));
     sendData(sockfd, encoded);
+    printf("==============\n\n");
     print_result(sockfd);
+    printf("==============\n");
 }
 
 int listSongsByYear(int sockfd)
@@ -193,7 +197,10 @@ int listSongsByYear(int sockfd)
     strcat(encoded, "|");
     strcat(encoded, intToChar(ano));
     sendData(sockfd, encoded);
+    printf("\nAs musicas do ano de %d são:\n", ano);
+    printf("==============\n\n");
     print_result(sockfd);
+    printf("==============\n");
 }
 
 int listSongsByLanguageAndYear(int sockfd)
@@ -212,7 +219,10 @@ int listSongsByLanguageAndYear(int sockfd)
     strcat(encoded, "|");
     strcat(encoded, intToChar(ano));
     sendData(sockfd, encoded);
+    printf("\nAs musicas do ano de %d em %s são:\n", ano, idioma);
+    printf("==============\n\n");
     print_result(sockfd);
+    printf("==============\n");
 }
 
 int listSongsByType(int sockfd)
@@ -229,7 +239,10 @@ int listSongsByType(int sockfd)
     strcat(encoded, "|");
     strcat(encoded, type);
     sendData(sockfd, encoded);
+    printf("\nAs musicas do ano do genero %s são:\n", type);
+    printf("==============\n\n");
     print_result(sockfd);
+    printf("==============\n");
 }
 
 int listSongInformation(int sockfd)
@@ -244,7 +257,10 @@ int listSongInformation(int sockfd)
     strcat(encoded, "|");
     strcat(encoded, intToChar(songId));
     sendData(sockfd, encoded);
+    printf("\nAs informações da musica de ID %d são:\n", songId);
+    printf("==============\n\n");
     print_result(sockfd);
+    printf("==============\n");
 }
 
 int listAllSongInformation(int sockfd)
@@ -254,7 +270,10 @@ int listAllSongInformation(int sockfd)
     char encoded[MAXBUFLEN];
     strcpy(encoded, "5");
     sendData(sockfd, encoded);
+    printf("\n informacoes de todas as musicas são:\n");
+    printf("==============\n\n");
     print_result(sockfd);
+    printf("==============\n");
 }
 
 int main(int argc, char *argv[])
