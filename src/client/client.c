@@ -361,7 +361,7 @@ int main(int argc, char *argv[])
             printf("2. List songs by language and year\n");
             printf("3. List songs by type\n");
             printf("4. List song information\n");
-            printf("5. List all song information\n");
+            printf("5. List all songs information\n");
             if (isAdmin(userSecret))
             {
                 // show admin music options
