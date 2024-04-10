@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <math.h> // Adicionado para log10
 
 #define MYPORT "4950" // the port users will be connecting to
 
@@ -602,27 +603,39 @@ int main(void)
 				  s, sizeof s);
 		printf("server: got connection from %s\n", s);
 
-		if (!fork())
-		{				   // this is the child process
-			close(sockfd); // child doesn't need the listener
-			char buf[MAXBUFLEN];
-			ssize_t numBytes;
+		if (!fork()) { // this is the child process
+            close(sockfd); // child doesn't need the listener
+            char buf[MAXBUFLEN];
+            ssize_t numBytes;
 
-			// Loop to read all requests until the client closes the connection
-			while ((numBytes = recv(new_fd, buf, MAXBUFLEN - 1, 0)) > 0)
-			{
-				buf[numBytes] = '\0'; // Null-terminate the string
-				handleData(buf,new_fd);
-			}
+            // Loop para ler todas as solicitações até que o cliente feche a conexão
+            while ((numBytes = recv(new_fd, buf, MAXBUFLEN - 1, 0)) > 0) {
+                buf[numBytes] = '\0'; // Null-terminate a string
+                // Verificação do tamanho da mensagem recebida
+                int expected_size;
+                if (sscanf(buf, "%d|", &expected_size) != 1) {
+                    printf("Formato inválido da mensagem recebida.\n");
+                    // Aqui você pode adicionar ações adicionais, como fechar a conexão ou enviar uma mensagem de erro
+                } else {
+                    if (numBytes != expected_size) {
+                        printf("Tamanho da mensagem recebida incorreto.\n");
+                        numBytes += recv(new_fd, buf, MAXBUFLEN - 1, 0);
+                        // Aqui você pode adicionar ações adicionais, como fechar a conexão ou enviar uma mensagem de erro
+                    } else {
+                        handleData(buf, new_fd);
+                    }
+                }
+            }
 
-			if (numBytes == -1)
-			{
-				perror("recv");
-			}
+            if (numBytes == -1) {
+                perror("recv");
+            }
 
-			close(new_fd);
-			exit(0);
-		}
-		close(new_fd); // parent doesn't need this
-	}
+            close(new_fd);
+            exit(0);
+        }
+        close(new_fd);  // pai não precisa disso
+    }
+
+    return 0;
 }
