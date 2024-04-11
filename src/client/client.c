@@ -239,7 +239,7 @@ int listSongsByType(int sockfd)
     strcat(encoded, "|");
     strcat(encoded, type);
     sendData(sockfd, encoded);
-    printf("\nAs musicas do ano do genero %s são:\n", type);
+    printf("\nAs musicas do genero %s são:\n", type);
     printf("==============\n\n");
     print_result(sockfd);
     printf("==============\n");
