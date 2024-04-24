@@ -276,6 +276,12 @@ int listAllSongInformation(int sockfd)
     printf("==============\n");
 }
 
+int downloadSong(int sockfd)
+{
+    printf("Download Song\n");
+    printf("Enter Song:\n");
+}
+
 int main(int argc, char *argv[])
 {
     int sockfd, numbytes;  
@@ -362,11 +368,12 @@ int main(int argc, char *argv[])
             printf("3. List songs by type\n");
             printf("4. List song information\n");
             printf("5. List all songs information\n");
+            printf("6. Download a song")
             if (isAdmin(userSecret))
             {
                 // show admin music options
-                printf("6. Register song\n");
-                printf("7. Remove song\n");
+                printf("7. Register song\n");
+                printf("8. Remove song\n");
             }
             printf("Enter your choice: ");
             scanf("%d", &operation);
@@ -388,9 +395,12 @@ int main(int argc, char *argv[])
                 listAllSongInformation(sockfd);
                 break;
             case 6:
-                registerSong(sockfd);
+                downloadSong(sockfd);
                 break;
             case 7:
+                registerSong(sockfd);
+                break;
+            case 8:
                 removeSong(sockfd);
                 break;
             default:
