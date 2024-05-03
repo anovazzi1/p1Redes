@@ -39,34 +39,91 @@ int sendall(int s, char *buf, int *len)
     int bytesleft = *len; // how many we have left to send
     int n;
 
-    while(total < *len) {
-        n = send(s, buf+total, bytesleft, 0);
-        if (n == -1) { break; }
+    while (total < *len)
+    {
+        n = send(s, buf + total, bytesleft, 0);
+        if (n == -1)
+        {
+            break;
+        }
         total += n;
         bytesleft -= n;
     }
 
     *len = total; // return number actually sent here
 
-    return n==-1?-1:0; // return -1 on failure, 0 on success
+    return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
 }
 
 int sendData(int sockfd, char *data)
 {
     int oldLen = strlen(data);
     char *oldLenC = intToChar(oldLen);
-    int Newlen = oldLen+ strlen(oldLenC)+1;
+    int Newlen = oldLen + strlen(oldLenC) + 1;
     char *newLenC = intToChar(Newlen);
-    if(strlen(newLenC)>strlen(oldLenC)){
-        Newlen +=1;
+    if (strlen(newLenC) > strlen(oldLenC))
+    {
+        Newlen += 1;
     }
     newLenC = intToChar(Newlen);
     strcat(newLenC, "|");
-    strcat(newLenC,data);
+    strcat(newLenC, data);
     int newLen = strlen(newLenC);
     int *len = &newLen;
-    sendall(sockfd,newLenC,len);
+    sendall(sockfd, newLenC, len);
 }
+
+int sendDataUDP(char *ip, char *data)
+{
+    int sockfd;
+    struct addrinfo hints, *servinfo, *p;
+    int rv;
+    int numbytes;
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_INET; // set to AF_INET to use IPv4
+    hints.ai_socktype = SOCK_DGRAM;
+
+    if ((rv = getaddrinfo(ip, SERVERPORT, &hints, &servinfo)) != 0)
+    {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        return 1;
+    }
+
+    // loop through all the results and make a socket
+    for (p = servinfo; p != NULL; p = p->ai_next)
+    {
+        if ((sockfd = socket(p->ai_family, p->ai_socktype,
+                             p->ai_protocol)) == -1)
+        {
+            perror("talker: socket");
+            continue;
+        }
+
+        break;
+    }
+
+    if (p == NULL)
+    {
+        fprintf(stderr, "talker: failed to create socket\n");
+        return 2;
+    }
+
+    if ((numbytes = sendto(sockfd, data, strlen(data), 0,
+                           p->ai_addr, p->ai_addrlen)) == -1)
+    {
+        perror("talker: sendto");
+        exit(1);
+    }
+
+    freeaddrinfo(servinfo);
+
+    printf("talker: sent %d bytes to %s\n", numbytes, ip);
+    close(sockfd);
+
+    return 0;
+}
+
 
 char *login()
 {
@@ -140,12 +197,12 @@ int registerSong(int sockfd)
     songType[strcspn(songType, "\n")] = 0;
     printf("Enter song artist:\n");
     char songArtist[100];
-    //getchar();
+    // getchar();
     fgets(songArtist, sizeof(songArtist), stdin);
     songArtist[strcspn(songArtist, "\n")] = 0;
     printf("Enter song chorus:\n");
     char songChorus[100];
-    //getchar();
+    // getchar();
     fgets(songChorus, sizeof(songChorus), stdin);
     songChorus[strcspn(songChorus, "\n")] = 0;
     char encoded[MAXBUFLEN];
@@ -278,59 +335,78 @@ int listAllSongInformation(int sockfd)
 
 int downloadSong(int sockfd)
 {
-    printf("Download Song\n");
-    printf("Enter Song:\n");
+    printf("Download a song listed bellow (only music with id 7 is avaliable) \n");
+    listAllSongInformation(sockfd);
+    int songId;
+    while (TRUE)
+    {
+        printf("Enter Song:\n");
+        scanf("%d", &songId);
+        if (songId == 7)
+        {
+            break;
+        }
+        printf("Song not avaliable for download\n");
+    }
+    printf("Downloading song with id %d\n", songId);
+
 }
 
 int main(int argc, char *argv[])
 {
-    int sockfd, numbytes;  
-	char buf[MAXBUFLEN];
-	struct addrinfo hints, *servinfo, *p;
-	int rv;
-	char s[INET6_ADDRSTRLEN];
+    int sockfd, numbytes;
+    char buf[MAXBUFLEN];
+    struct addrinfo hints, *servinfo, *p;
+    int rv;
+    char s[INET6_ADDRSTRLEN];
 
-	if (argc != 2) {
-	    fprintf(stderr,"usage: client hostname\n");
-	    exit(1);
-	}
+    if (argc != 2)
+    {
+        fprintf(stderr, "usage: client hostname\n");
+        exit(1);
+    }
 
-	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
 
-	if ((rv = getaddrinfo(argv[1], SERVERPORT, &hints, &servinfo)) != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-		return 1;
-	}
+    if ((rv = getaddrinfo(argv[1], SERVERPORT, &hints, &servinfo)) != 0)
+    {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        return 1;
+    }
 
-	// loop through all the results and connect to the first we can
-	for(p = servinfo; p != NULL; p = p->ai_next) {
-		if ((sockfd = socket(p->ai_family, p->ai_socktype,
-				p->ai_protocol)) == -1) {
-			perror("client: socket");
-			continue;
-		}
+    // loop through all the results and connect to the first we can
+    for (p = servinfo; p != NULL; p = p->ai_next)
+    {
+        if ((sockfd = socket(p->ai_family, p->ai_socktype,
+                             p->ai_protocol)) == -1)
+        {
+            perror("client: socket");
+            continue;
+        }
 
-		if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-			perror("client: connect");
-			close(sockfd);
-			continue;
-		}
+        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1)
+        {
+            perror("client: connect");
+            close(sockfd);
+            continue;
+        }
 
-		break;
-	}
+        break;
+    }
 
-	if (p == NULL) {
-		fprintf(stderr, "client: failed to connect\n");
-		return 2;
-	}
+    if (p == NULL)
+    {
+        fprintf(stderr, "client: failed to connect\n");
+        return 2;
+    }
 
-	inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
-			s, sizeof s);
-	printf("client: connecting to %s\n", s);
+    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
+              s, sizeof s);
+    printf("client: connecting to %s\n", s);
 
-	freeaddrinfo(servinfo);
+    freeaddrinfo(servinfo);
 
     char *userSecret = "";
     int userOption;
@@ -368,7 +444,7 @@ int main(int argc, char *argv[])
             printf("3. List songs by type\n");
             printf("4. List song information\n");
             printf("5. List all songs information\n");
-            printf("6. Download a song")
+            printf("6. Download a song");
             if (isAdmin(userSecret))
             {
                 // show admin music options
