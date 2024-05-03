@@ -411,7 +411,7 @@ char* listar_musicas_ano_string(int ano) {
 }
 
 
-int sendData(char *ip, char *data)
+int sendDataUDP(char *ip, char *data)
 {
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
