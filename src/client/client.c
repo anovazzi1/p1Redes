@@ -74,8 +74,18 @@ int sendData(int sockfd, char *data)
     sendall(sockfd, newLenC, len);
 }
 
-int receiveUDP(char buf[MAXBUFLEN])
+void *get_in_addr(struct sockaddr *sa)
 {
+    if (sa->sa_family == AF_INET)
+    {
+        return &(((struct sockaddr_in *)sa)->sin_addr);
+    }
+
+    return &(((struct sockaddr_in6 *)sa)->sin6_addr);
+}
+int receiveUDP()
+{
+    char buf[MAXBUFLEN];
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
     int rv;
@@ -171,15 +181,6 @@ int isAdmin(char *userSecret)
     return FALSE;
 }
 
-void *get_in_addr(struct sockaddr *sa)
-{
-    if (sa->sa_family == AF_INET)
-    {
-        return &(((struct sockaddr_in *)sa)->sin_addr);
-    }
-
-    return &(((struct sockaddr_in6 *)sa)->sin6_addr);
-}
 
 void *print_result(int sockfd)
 {
@@ -352,7 +353,7 @@ int listAllSongInformation(int sockfd)
     printf("==============\n");
 }
 
-int downloadSong(int sockfd,int*ip)
+int downloadSong(int sockfd)
 {
     printf("Download a song listed bellow (only music with id 7 is avaliable) \n");
     listAllSongInformation(sockfd);
@@ -370,7 +371,7 @@ int downloadSong(int sockfd,int*ip)
     printf("Downloading song with id %d\n", songId);
     sendData(sockfd, "8|7");
     //Receive song as udp
-    receiveUDP(ip);
+    receiveUDP();
 }
 
 int main(int argc, char *argv[])
@@ -492,7 +493,7 @@ int main(int argc, char *argv[])
                 listAllSongInformation(sockfd);
                 break;
             case 6:
-                downloadSong(sockfd,argv[1]);
+                downloadSong(sockfd);
                 break;
             case 7:
                 registerSong(sockfd);
