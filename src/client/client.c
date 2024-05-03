@@ -149,6 +149,7 @@ int receiveUDP()
                      s, sizeof s));
     printf("listener: packet is %d bytes long\n", numbytes);
     buf[numbytes] = '\0';
+    printf("listener: packet contains \"%s\"\n", buf);
     close(sockfd);
 
     return 1;
@@ -466,14 +467,14 @@ int main(int argc, char *argv[])
             printf("3. List songs by type\n");
             printf("4. List song information\n");
             printf("5. List all songs information\n");
-            printf("6. Download a song");
+            printf("6. Download a song\n");
             if (isAdmin(userSecret))
             {
                 // show admin music options
                 printf("7. Register song\n");
                 printf("8. Remove song\n");
             }
-            printf("Enter your choice: ");
+            printf("Enter your choice: \n");
             scanf("%d", &operation);
             switch (operation)
             {

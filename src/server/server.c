@@ -488,7 +488,7 @@ void *get_in_addr(struct sockaddr *sa)
 	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
-int handleData(char *mensagem,int sockfd)
+int handleData(char *mensagem,int sockfd,char*ip)
 {
 	printf("server: received '%s'\n", mensagem);
 	struct Music musicas[MAX_SONGS];
@@ -561,6 +561,10 @@ int handleData(char *mensagem,int sockfd)
         }
         default:
             printf("Operação inválida!\n");
+        case 8: {
+            sendDataUDP(ip,"Mensagem enviada via UDP");
+            break;
+        }
     }
 
     return 0;
@@ -643,6 +647,8 @@ int main(void)
 
 	while (1)
 	{ // main accept() loop
+        // struct sockaddr_in client_addr;
+        // socklen_t addr_size = sizeof(client_addr);
 		sin_size = sizeof their_addr;
 		new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
 		if (new_fd == -1)
@@ -675,7 +681,8 @@ int main(void)
                         numBytes += recv(new_fd, buf, MAXBUFLEN - 1, 0);
                         // Aqui você pode adicionar ações adicionais, como fechar a conexão ou enviar uma mensagem de erro
                     } else {
-                        handleData(buf, new_fd);
+                        handleData(buf, new_fd,s);
+
                     }
                 }
             }
