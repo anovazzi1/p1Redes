@@ -12,6 +12,10 @@
 #include <signal.h>
 
 #define MAXBUFLEN 1024
+#define MAX_PACKET_SIZE 1024
+
+#define MAX_PACKETS 1024
+
 #define SERVERPORT "4950" // the port users will be connecting to
 #define TRUE 1
 #define FALSE 0
@@ -26,7 +30,12 @@ struct Music
     int ano;
     char refrao[256];
 };
+struct Packet {
+    int index;
+    char data[MAX_PACKET_SIZE];
+};
 
+struct Packet packets[MAX_PACKETS];
 char *intToChar(int num)
 {
     char *str = malloc(100 * sizeof(char));
@@ -283,6 +292,63 @@ int listAllSongInformation(int sockfd)
     printf("==============\n");
 }
 
+// Função para receber pacotes via UDP
+void receivePacketsUDP(int sockfd) {
+    struct sockaddr_storage their_addr;
+    socklen_t addr_len;
+    char buf[MAXBUFLEN];
+    int numbytes;
+
+    printf("listener: waiting to recvfrom...\n");
+
+    addr_len = sizeof their_addr;
+    while (TRUE) {
+        numbytes = recvfrom(sockfd, buf, MAXBUFLEN - 1, 0,
+                            (struct sockaddr *)&their_addr, &addr_len);
+
+        if (numbytes == -1) {
+            perror("recvfrom");
+            break;
+        }
+
+        // Extrai o índice do pacote e os dados do pacote
+        char *indexStr = strtok(buf, "|");
+        char *data = strtok(NULL, "|");
+
+        int index = atoi(indexStr);
+
+        // Armazena o pacote
+        packets[index].index = index;
+        strcpy(packets[index].data, data);
+
+        printf("listener: received packet %d\n", index);
+    }
+
+    printf("listener: finished receiving packets\n");
+}
+
+
+// Função para reconstruir o arquivo MP3
+void reconstructFile(char *filename) {
+    FILE *file = fopen(filename, "wb");
+    if (file == NULL) {
+        printf("Não foi possível abrir o arquivo %s\n", filename);
+        return;
+    }
+
+    // Escreve os pacotes no arquivo em ordem
+    for (int i = 0; i < MAX_PACKETS; i++) {
+        if (packets[i].index != -1) {
+            fwrite(packets[i].data, 1, MAX_PACKET_SIZE, file);
+        } else {
+            break;
+        }
+    }
+
+    fclose(file);
+    printf("Arquivo %s reconstruído com sucesso\n", filename);
+}
+
 int receiveUDP()
 {
     char buf[MAXBUFLEN];
@@ -354,25 +420,31 @@ int receiveUDP()
 
     return 1;
 }
-int downloadSong(int sockfd)
-{
+// Função para fazer o download de uma música via UDP
+int downloadSong(int sockfd) {
     printf("Download a song listed bellow (only music with id 7 is avaliable) \n");
     listAllSongInformation(sockfd);
     int songId;
-    while (TRUE)
-    {
+    while (TRUE) {
         printf("Enter Song:\n");
         scanf("%d", &songId);
-        if (songId == 7)
-        {
+        if (songId == 7) {
             break;
         }
         printf("Song not avaliable for download\n");
     }
     printf("Downloading song with id %d\n", songId);
     sendData(sockfd, "8|7");
-    //Receive song as udp
-    receiveUDP();
+
+    receiveUDP()
+
+    // // Recebe a música como pacotes UDP
+    // receivePacketsUDP(sockfd);
+
+    // // Reconstrói o arquivo MP3 a partir dos pacotes
+    // reconstructFile("downloaded.mp3");
+
+    return 0;
 }
 
 int main(int argc, char *argv[])
