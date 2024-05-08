@@ -11,6 +11,13 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <math.h> // Adicionado para log10
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+
+#define MAX_SONGS 100
+#define CLIENTPORT "4950"
+#define MAXBUFLEN 100
+#define CHUNK_SIZE 1024
 
 #define MYPORT "4950" // the port users will be connecting to
 
@@ -411,6 +418,108 @@ char* listar_musicas_ano_string(int ano) {
 }
 
 
+
+
+void sigchld_handler(int s)
+{
+	(void)s; // quiet unused variable warning
+
+	// waitpid() might overwrite errno, so we save and restore it:
+	int saved_errno = errno;
+
+	while (waitpid(-1, NULL, WNOHANG) > 0)
+		;
+
+	errno = saved_errno;
+}
+
+// get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa)
+{
+	if (sa->sa_family == AF_INET)
+	{
+		return &(((struct sockaddr_in *)sa)->sin_addr);
+	}
+
+	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
+}
+
+
+
+void sendMusicChunksUDP(char *ip, char *musicFilePath) {
+    FILE *file = fopen(musicFilePath, "rb");
+    if (!file) {
+        printf("Falha ao abrir o arquivo de música.\n");
+        return;
+    }
+
+    // Descobrir o tamanho do arquivo
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    rewind(file);
+
+    // Calculando o número de pedaços necessários
+    int numChunks = (fileSize + CHUNK_SIZE - 1) / CHUNK_SIZE;
+
+    char *chunkBuffer = (char *)malloc(CHUNK_SIZE);
+    if (!chunkBuffer) {
+        printf("Erro ao alocar memória para o buffer do pedaço.\n");
+        fclose(file);
+        return;
+    }
+
+    for (int i = 0; i < numChunks; i++) {
+        // Lendo o próximo pedaço do arquivo
+        size_t bytesRead = fread(chunkBuffer, 1, CHUNK_SIZE, file);
+        if (bytesRead <= 0) {
+            printf("Erro ao ler o pedaço do arquivo.\n");
+            break;
+        }
+
+        // Convertendo o pedaço para Base64
+        BIO *bio, *b64;
+        FILE *stream;
+        int encodedSize = 4 * ((bytesRead + 2) / 3); // tamanho do buffer de saída codificado
+        char *base64Buffer = (char *)malloc(encodedSize + 1); // +1 para o caractere nulo
+        if (!base64Buffer) {
+            printf("Erro ao alocar memória para o buffer Base64.\n");
+            fclose(file);
+            return;
+        }
+
+        // Inicializando BIO para codificação Base64
+        b64 = BIO_new(BIO_f_base64());
+        BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+        bio = BIO_new(BIO_s_mem());
+        bio = BIO_push(b64, bio);
+
+        // Escrevendo dados no BIO
+        BIO_write(bio, chunkBuffer, bytesRead);
+        BIO_flush(bio);
+
+        // Lendo dados codificados do BIO
+        int len = BIO_read(bio, base64Buffer, encodedSize);
+        base64Buffer[len] = '\0'; // Adicionando o caractere nulo ao final
+
+        // Liberando recursos do BIO
+        BIO_free_all(bio);
+
+        // Construindo a mensagem a ser enviada: "id-ordem|conteudo-transformado"
+        char mensagem[MAXBUFLEN];
+        snprintf(mensagem, MAXBUFLEN, "%d-%d|%s", i, numChunks, base64Buffer);
+
+        // Enviando o pedaço via UDP
+        sendDataUDP(ip, mensagem);
+
+        free(base64Buffer);
+    }
+
+    free(chunkBuffer);
+    fclose(file);
+}
+
+
+
 int sendDataUDP(char *ip, char *data)
 {
     int sockfd;
@@ -462,31 +571,6 @@ int sendDataUDP(char *ip, char *data)
     return 0;
 }
 
-
-
-void sigchld_handler(int s)
-{
-	(void)s; // quiet unused variable warning
-
-	// waitpid() might overwrite errno, so we save and restore it:
-	int saved_errno = errno;
-
-	while (waitpid(-1, NULL, WNOHANG) > 0)
-		;
-
-	errno = saved_errno;
-}
-
-// get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa)
-{
-	if (sa->sa_family == AF_INET)
-	{
-		return &(((struct sockaddr_in *)sa)->sin_addr);
-	}
-
-	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
-}
 
 int handleData(char *mensagem,int sockfd,char*ip)
 {
@@ -562,6 +646,7 @@ int handleData(char *mensagem,int sockfd,char*ip)
         default:
             printf("Operação inválida!\n");
         case 8: {
+
             sendDataUDP(ip,"Mensagem enviada via UDP");
             break;
         }
