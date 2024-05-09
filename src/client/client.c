@@ -436,7 +436,11 @@ int downloadSong(int sockfd) {
     printf("Downloading song with id %d\n", songId);
     sendData(sockfd, "8|7");
 
-    receiveUDP()
+    
+    receiveUDP();
+
+
+    
 
     // // Recebe a música como pacotes UDP
     // receivePacketsUDP(sockfd);

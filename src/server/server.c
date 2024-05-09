@@ -486,6 +486,7 @@ struct Packet* divideFileInPackets(char *filename, int *numPackets) {
 
 // Função para enviar pacotes via UDP
 void sendPacketsUDP(char *ip, struct Packet *packets, int numPackets) {
+    
     for (int i = 0; i < numPackets; i++) {
         // Convertendo o índice do pacote para string
         char indexStr[10];
@@ -630,16 +631,18 @@ int handleData(char *mensagem,int sockfd,char*ip)
             sendData(sockfd, listar_informacoes_todas_musicas_string());
             break;
         }
-        default:
-            printf("Operação inválida!\n");
         case 8: {
+            printf("entrou");
             char *filename = "better-day-186374.mp3"; 
             int numPackets;
             struct Packet *packets = divideFileInPackets(filename, &numPackets);
+            printf("%d",numPackets);
             sendPacketsUDP(ip, packets, numPackets);
             free(packets);
             break;
         }
+        default:
+            printf("Operação inválida!\n");
     }
 
     return 0;
