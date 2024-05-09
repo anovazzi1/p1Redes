@@ -11,12 +11,10 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <math.h> // Adicionado para log10
-#include <openssl/bio.h>
-#include <openssl/evp.h>
+
 
 #define MAX_SONGS 100
 #define CLIENTPORT "4950"
-#define MAXBUFLEN 100
 #define CHUNK_SIZE 1024
 
 #define MYPORT "4950" // the port users will be connecting to
@@ -60,7 +58,6 @@ struct Music {
     int ano;
 };
 
-#define MAX_SONGS 1000 // Número máximo de músicas que o servidor pode armazenar
 #define FILENAME "songs.csv" // Nome do arquivo CSV
 
 // Função para ler músicas do arquivo CSV e carregá-las na memória
@@ -446,77 +443,67 @@ void *get_in_addr(struct sockaddr *sa)
 
 
 
-void sendMusicChunksUDP(char *ip, char *musicFilePath) {
-    FILE *file = fopen(musicFilePath, "rb");
-    if (!file) {
-        printf("Falha ao abrir o arquivo de música.\n");
-        return;
+#define MAX_PACKET_SIZE 1024 // Defina o tamanho máximo do pacote conforme necessário
+
+struct Packet {
+    int index;
+    char data[MAX_PACKET_SIZE];
+};
+
+// Função para ler o arquivo MP3 e dividir em pacotes
+struct Packet* divideFileInPackets(char *filename, int *numPackets) {
+    FILE *file = fopen(filename, "rb");
+    if (file == NULL) {
+        printf("Não foi possível abrir o arquivo %s\n", filename);
+        return NULL;
     }
 
-    // Descobrir o tamanho do arquivo
+    // Obtém o tamanho do arquivo
     fseek(file, 0, SEEK_END);
     long fileSize = ftell(file);
     rewind(file);
 
-    // Calculando o número de pedaços necessários
-    int numChunks = (fileSize + CHUNK_SIZE - 1) / CHUNK_SIZE;
+    // Calcula o número de pacotes
+    *numPackets = fileSize / MAX_PACKET_SIZE;
+    if (fileSize % MAX_PACKET_SIZE) (*numPackets)++;
 
-    char *chunkBuffer = (char *)malloc(CHUNK_SIZE);
-    if (!chunkBuffer) {
-        printf("Erro ao alocar memória para o buffer do pedaço.\n");
-        fclose(file);
-        return;
+    // Aloca memória para os pacotes
+    struct Packet *packets = malloc((*numPackets) * sizeof(struct Packet));
+
+    // Lê o arquivo e divide em pacotes
+    for (int i = 0; i < *numPackets; i++) {
+        packets[i].index = i;
+        int bytesRead = fread(packets[i].data, 1, MAX_PACKET_SIZE, file);
+        if (bytesRead < MAX_PACKET_SIZE) {
+            // Se o último pacote for menor que o tamanho máximo do pacote, preenche com zeros
+            memset(packets[i].data + bytesRead, 0, MAX_PACKET_SIZE - bytesRead);
+        }
     }
 
-    for (int i = 0; i < numChunks; i++) {
-        // Lendo o próximo pedaço do arquivo
-        size_t bytesRead = fread(chunkBuffer, 1, CHUNK_SIZE, file);
-        if (bytesRead <= 0) {
-            printf("Erro ao ler o pedaço do arquivo.\n");
-            break;
-        }
-
-        // Convertendo o pedaço para Base64
-        BIO *bio, *b64;
-        FILE *stream;
-        int encodedSize = 4 * ((bytesRead + 2) / 3); // tamanho do buffer de saída codificado
-        char *base64Buffer = (char *)malloc(encodedSize + 1); // +1 para o caractere nulo
-        if (!base64Buffer) {
-            printf("Erro ao alocar memória para o buffer Base64.\n");
-            fclose(file);
-            return;
-        }
-
-        // Inicializando BIO para codificação Base64
-        b64 = BIO_new(BIO_f_base64());
-        BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
-        bio = BIO_new(BIO_s_mem());
-        bio = BIO_push(b64, bio);
-
-        // Escrevendo dados no BIO
-        BIO_write(bio, chunkBuffer, bytesRead);
-        BIO_flush(bio);
-
-        // Lendo dados codificados do BIO
-        int len = BIO_read(bio, base64Buffer, encodedSize);
-        base64Buffer[len] = '\0'; // Adicionando o caractere nulo ao final
-
-        // Liberando recursos do BIO
-        BIO_free_all(bio);
-
-        // Construindo a mensagem a ser enviada: "id-ordem|conteudo-transformado"
-        char mensagem[MAXBUFLEN];
-        snprintf(mensagem, MAXBUFLEN, "%d-%d|%s", i, numChunks, base64Buffer);
-
-        // Enviando o pedaço via UDP
-        sendDataUDP(ip, mensagem);
-
-        free(base64Buffer);
-    }
-
-    free(chunkBuffer);
     fclose(file);
+    return packets;
 }
+
+// Função para enviar pacotes via UDP
+void sendPacketsUDP(char *ip, struct Packet *packets, int numPackets) {
+    for (int i = 0; i < numPackets; i++) {
+        // Convertendo o índice do pacote para string
+        char indexStr[10];
+        sprintf(indexStr, "%d", packets[i].index);
+
+        // Concatenando o índice do pacote e os dados do pacote
+        char packetData[MAX_PACKET_SIZE + 10];
+        strcpy(packetData, indexStr);
+
+        strcat(packetData, packets[i].data);
+
+        //printf(packetData[0]);
+
+        // Enviando o pacote via UDP
+        sendDataUDP(ip, packetData);
+    }
+}
+
 
 
 
@@ -646,8 +633,11 @@ int handleData(char *mensagem,int sockfd,char*ip)
         default:
             printf("Operação inválida!\n");
         case 8: {
-
-            sendDataUDP(ip,"Mensagem enviada via UDP");
+            char *filename = "better-day-186374.mp3"; 
+            int numPackets;
+            struct Packet *packets = divideFileInPackets(filename, &numPackets);
+            sendPacketsUDP(ip, packets, numPackets);
+            free(packets);
             break;
         }
     }
