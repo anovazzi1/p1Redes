@@ -12,12 +12,17 @@
 #include <sys/wait.h>
 #include <math.h> // Adicionado para log10
 
+#define MAX_SONGS 100
+#define CHUNK_SIZE 1024
+
 #define MYPORT "4950" // the port users will be connecting to
 
 #define MAXBUFLEN 1024
 
 #define BACKLOG 10 // how many pending connections queue will hold
-#define CLIENTPORT "4950" // Porta do cliente
+#define CLIENTPORT 4950 // Porta do cliente
+#define MAX_PACKET_SIZE 1024
+#define FILENAME "songs.csv" // Nome do arquivo CSV
 
 int sendall(int s, char *buf, int *len)
 {
@@ -53,8 +58,6 @@ struct Music {
     int ano;
 };
 
-#define MAX_SONGS 1000 // Número máximo de músicas que o servidor pode armazenar
-#define FILENAME "songs.csv" // Nome do arquivo CSV
 
 // Função para ler músicas do arquivo CSV e carregá-las na memória
 int ler_musicas(struct Music songs[]) {
@@ -411,6 +414,32 @@ char* listar_musicas_ano_string(int ano) {
 }
 
 
+
+
+void sigchld_handler(int s)
+{
+	(void)s; // quiet unused variable warning
+
+	// waitpid() might overwrite errno, so we save and restore it:
+	int saved_errno = errno;
+
+	while (waitpid(-1, NULL, WNOHANG) > 0)
+		;
+
+	errno = saved_errno;
+}
+
+// get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa)
+{
+	if (sa->sa_family == AF_INET)
+	{
+		return &(((struct sockaddr_in *)sa)->sin_addr);
+	}
+
+	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
+}
+
 int sendDataUDP(char *ip, char *data)
 {
     int sockfd;
@@ -422,7 +451,7 @@ int sendDataUDP(char *ip, char *data)
     hints.ai_family = AF_INET; // set to AF_INET to use IPv4
     hints.ai_socktype = SOCK_DGRAM;
 
-    if ((rv = getaddrinfo(ip, CLIENTPORT, &hints, &servinfo)) != 0)
+    if ((rv = getaddrinfo(ip, MYPORT, &hints, &servinfo)) != 0)
     {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
         return 1;
@@ -462,30 +491,51 @@ int sendDataUDP(char *ip, char *data)
     return 0;
 }
 
+void sendFileOverUDP(const char *ipAddress) {
+    FILE *file;
+    struct sockaddr_in serverAddr;
+    char buffer[MAXBUFLEN];
+    ssize_t bytesRead;
+    int sequenceNumber = 0;    
+    // Open the file
+    file = fopen("better-day-186374.mp3", "rb");
+    if (!file) {
+        perror("Error opening file");
+        return;
+    }
 
+    // Create UDP socket
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("Error creating socket");
+        fclose(file);
+        return;
+    }
 
-void sigchld_handler(int s)
-{
-	(void)s; // quiet unused variable warning
+    // Set up server address
+    memset(&serverAddr, 0, sizeof(serverAddr));
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(CLIENTPORT);
+    inet_pton(AF_INET, ipAddress, &serverAddr.sin_addr);
 
-	// waitpid() might overwrite errno, so we save and restore it:
-	int saved_errno = errno;
+    // Send file data with sequence numbers
+    while ((bytesRead = fread(buffer, 1, MAXBUFLEN, file)) > 0) {
+        // Add sequence number to the beginning of the buffer
+        memcpy(buffer, &sequenceNumber, sizeof(int));
+        printf("Sending packet %d\n", sequenceNumber);
+        printf("Bytes read: %ld\n", bytesRead);
+        sendto(sockfd, buffer, bytesRead + sizeof(int), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+        sequenceNumber++;
+    }
 
-	while (waitpid(-1, NULL, WNOHANG) > 0)
-		;
+    // Send a final packet with sequence number -1 to indicate end of file
+    int endOfTransmission = -1;
+    memcpy(buffer, &endOfTransmission, sizeof(int));
+    sendto(sockfd, buffer, sizeof(int), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 
-	errno = saved_errno;
-}
-
-// get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa)
-{
-	if (sa->sa_family == AF_INET)
-	{
-		return &(((struct sockaddr_in *)sa)->sin_addr);
-	}
-
-	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
+    // Close file and socket
+    fclose(file);
+    close(sockfd);
 }
 
 int handleData(char *mensagem,int sockfd,char*ip)
@@ -506,8 +556,7 @@ int handleData(char *mensagem,int sockfd,char*ip)
     printf("len byte:%s\n", lenbyte);
     printf("op:%s\n", op);
     printf("dados:%s\n", dados);
-    
-
+    printf("op:%d\n", atoi(op));
     switch (atoi(op)) {
         case 6: {
             struct Music newSong;
@@ -548,7 +597,6 @@ int handleData(char *mensagem,int sockfd,char*ip)
             sendData(sockfd, listar_musicas_tipo_string(tipo));
             break;
         }
-
         case 4: {
             int id = atoi(dados);
             sendData(sockfd, listar_informacoes_musica_string(id));
@@ -559,14 +607,16 @@ int handleData(char *mensagem,int sockfd,char*ip)
             sendData(sockfd, listar_informacoes_todas_musicas_string());
             break;
         }
-        default:
-            printf("Operação inválida!\n");
         case 8: {
-            sendDataUDP(ip,"Mensagem enviada via UDP");
+            printf("entrou\n");
+            sendFileOverUDP(ip);
             break;
         }
-    }
+        default:
+            printf("Operação inválida!\n");
+            sendFileOverUDP(ip);
 
+    }
     return 0;
 }
 
