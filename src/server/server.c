@@ -13,15 +13,10 @@
 #include <math.h> // Adicionado para log10
 
 #define MAX_SONGS 100
-#define CHUNK_SIZE 1024
-
 #define MYPORT "4950" // the port users will be connecting to
-
-#define MAXBUFLEN 1024
-
+#define MAXBUFLEN 2048
 #define BACKLOG 10 // how many pending connections queue will hold
 #define CLIENTPORT 4950 // Porta do cliente
-#define MAX_PACKET_SIZE 1024
 #define FILENAME "songs.csv" // Nome do arquivo CSV
 
 int sendall(int s, char *buf, int *len)
@@ -491,14 +486,26 @@ int sendDataUDP(char *ip, char *data)
     return 0;
 }
 
-void sendFileOverUDP(const char *ipAddress) {
+void sendFileOverUDP(const char *ipAddress, int msc) {
     FILE *file;
     struct sockaddr_in serverAddr;
     char buffer[MAXBUFLEN];
     ssize_t bytesRead;
     int sequenceNumber = 0;    
     // Open the file
-    file = fopen("better-day-186374.mp3", "rb");
+
+
+
+    if( msc == 6){
+        file = fopen("titanium-170190.mp3", "rb");
+
+    } else if ( msc == 7) {
+        file = fopen("better-day-186374.mp3", "rb");
+    }
+
+
+    //file = fopen("titanium-170190.mp3", "rb");
+    //file = fopen("better-day-186374.mp3", "rb");
     if (!file) {
         perror("Error opening file");
         return;
@@ -519,11 +526,11 @@ void sendFileOverUDP(const char *ipAddress) {
     inet_pton(AF_INET, ipAddress, &serverAddr.sin_addr);
 
     // Send file data with sequence numbers
-    while ((bytesRead = fread(buffer, 1, MAXBUFLEN, file)) > 0) {
+    while ((bytesRead = fread(buffer + sizeof(int), 1, MAXBUFLEN - sizeof(int), file)) > 0) {
         // Add sequence number to the beginning of the buffer
         memcpy(buffer, &sequenceNumber, sizeof(int));
-        printf("Sending packet %d\n", sequenceNumber);
-        printf("Bytes read: %ld\n", bytesRead);
+        //printf("Sending packet %d\n", sequenceNumber);
+        //printf("Bytes read: %ld\n", bytesRead);
         sendto(sockfd, buffer, bytesRead + sizeof(int), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
         sequenceNumber++;
     }
@@ -609,12 +616,12 @@ int handleData(char *mensagem,int sockfd,char*ip)
         }
         case 8: {
             printf("entrou\n");
-            sendFileOverUDP(ip);
+            sendFileOverUDP(ip, atoi(dados));
             break;
         }
         default:
             printf("Operação inválida!\n");
-            sendFileOverUDP(ip);
+            sendFileOverUDP(ip, atoi(dados));
 
     }
     return 0;
