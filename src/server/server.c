@@ -12,9 +12,7 @@
 #include <sys/wait.h>
 #include <math.h> // Adicionado para log10
 
-
 #define MAX_SONGS 100
-#define CLIENTPORT "4950"
 #define CHUNK_SIZE 1024
 
 #define MYPORT "4950" // the port users will be connecting to
@@ -22,7 +20,9 @@
 #define MAXBUFLEN 1024
 
 #define BACKLOG 10 // how many pending connections queue will hold
-#define CLIENTPORT "4950" // Porta do cliente
+#define CLIENTPORT 4950 // Porta do cliente
+#define MAX_PACKET_SIZE 1024
+#define FILENAME "songs.csv" // Nome do arquivo CSV
 
 int sendall(int s, char *buf, int *len)
 {
@@ -58,7 +58,6 @@ struct Music {
     int ano;
 };
 
-#define FILENAME "songs.csv" // Nome do arquivo CSV
 
 // Função para ler músicas do arquivo CSV e carregá-las na memória
 int ler_musicas(struct Music songs[]) {
@@ -441,73 +440,6 @@ void *get_in_addr(struct sockaddr *sa)
 	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
-
-
-#define MAX_PACKET_SIZE 1024 // Defina o tamanho máximo do pacote conforme necessário
-
-struct Packet {
-    int index;
-    char data[MAX_PACKET_SIZE];
-};
-
-// Função para ler o arquivo MP3 e dividir em pacotes
-struct Packet* divideFileInPackets(char *filename, int *numPackets) {
-    FILE *file = fopen(filename, "rb");
-    if (file == NULL) {
-        printf("Não foi possível abrir o arquivo %s\n", filename);
-        return NULL;
-    }
-
-    // Obtém o tamanho do arquivo
-    fseek(file, 0, SEEK_END);
-    long fileSize = ftell(file);
-    rewind(file);
-
-    // Calcula o número de pacotes
-    *numPackets = fileSize / MAX_PACKET_SIZE;
-    if (fileSize % MAX_PACKET_SIZE) (*numPackets)++;
-
-    // Aloca memória para os pacotes
-    struct Packet *packets = malloc((*numPackets) * sizeof(struct Packet));
-
-    // Lê o arquivo e divide em pacotes
-    for (int i = 0; i < *numPackets; i++) {
-        packets[i].index = i;
-        int bytesRead = fread(packets[i].data, 1, MAX_PACKET_SIZE, file);
-        if (bytesRead < MAX_PACKET_SIZE) {
-            // Se o último pacote for menor que o tamanho máximo do pacote, preenche com zeros
-            memset(packets[i].data + bytesRead, 0, MAX_PACKET_SIZE - bytesRead);
-        }
-    }
-
-    fclose(file);
-    return packets;
-}
-
-// Função para enviar pacotes via UDP
-void sendPacketsUDP(char *ip, struct Packet *packets, int numPackets) {
-    
-    for (int i = 0; i < numPackets; i++) {
-        // Convertendo o índice do pacote para string
-        char indexStr[10];
-        sprintf(indexStr, "%d", packets[i].index);
-
-        // Concatenando o índice do pacote e os dados do pacote
-        char packetData[MAX_PACKET_SIZE + 10];
-        strcpy(packetData, indexStr);
-
-        strcat(packetData, packets[i].data);
-
-        //printf(packetData[0]);
-
-        // Enviando o pacote via UDP
-        sendDataUDP(ip, packetData);
-    }
-}
-
-
-
-
 int sendDataUDP(char *ip, char *data)
 {
     int sockfd;
@@ -519,7 +451,7 @@ int sendDataUDP(char *ip, char *data)
     hints.ai_family = AF_INET; // set to AF_INET to use IPv4
     hints.ai_socktype = SOCK_DGRAM;
 
-    if ((rv = getaddrinfo(ip, CLIENTPORT, &hints, &servinfo)) != 0)
+    if ((rv = getaddrinfo(ip, MYPORT, &hints, &servinfo)) != 0)
     {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
         return 1;
@@ -559,6 +491,52 @@ int sendDataUDP(char *ip, char *data)
     return 0;
 }
 
+void sendFileOverUDP(const char *ipAddress) {
+    FILE *file;
+    struct sockaddr_in serverAddr;
+    char buffer[MAXBUFLEN];
+    ssize_t bytesRead;
+    int sequenceNumber = 0;    
+    // Open the file
+    file = fopen("better-day-186374.mp3", "rb");
+    if (!file) {
+        perror("Error opening file");
+        return;
+    }
+
+    // Create UDP socket
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("Error creating socket");
+        fclose(file);
+        return;
+    }
+
+    // Set up server address
+    memset(&serverAddr, 0, sizeof(serverAddr));
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(CLIENTPORT);
+    inet_pton(AF_INET, ipAddress, &serverAddr.sin_addr);
+
+    // Send file data with sequence numbers
+    while ((bytesRead = fread(buffer, 1, MAXBUFLEN, file)) > 0) {
+        // Add sequence number to the beginning of the buffer
+        memcpy(buffer, &sequenceNumber, sizeof(int));
+        printf("Sending packet %d\n", sequenceNumber);
+        printf("Bytes read: %ld\n", bytesRead);
+        sendto(sockfd, buffer, bytesRead + sizeof(int), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+        sequenceNumber++;
+    }
+
+    // Send a final packet with sequence number -1 to indicate end of file
+    int endOfTransmission = -1;
+    memcpy(buffer, &endOfTransmission, sizeof(int));
+    sendto(sockfd, buffer, sizeof(int), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+
+    // Close file and socket
+    fclose(file);
+    close(sockfd);
+}
 
 int handleData(char *mensagem,int sockfd,char*ip)
 {
@@ -578,8 +556,7 @@ int handleData(char *mensagem,int sockfd,char*ip)
     printf("len byte:%s\n", lenbyte);
     printf("op:%s\n", op);
     printf("dados:%s\n", dados);
-    
-
+    printf("op:%d\n", atoi(op));
     switch (atoi(op)) {
         case 6: {
             struct Music newSong;
@@ -620,7 +597,6 @@ int handleData(char *mensagem,int sockfd,char*ip)
             sendData(sockfd, listar_musicas_tipo_string(tipo));
             break;
         }
-
         case 4: {
             int id = atoi(dados);
             sendData(sockfd, listar_informacoes_musica_string(id));
@@ -632,19 +608,15 @@ int handleData(char *mensagem,int sockfd,char*ip)
             break;
         }
         case 8: {
-            printf("entrou");
-            char *filename = "better-day-186374.mp3"; 
-            int numPackets;
-            struct Packet *packets = divideFileInPackets(filename, &numPackets);
-            printf("%d",numPackets);
-            sendPacketsUDP(ip, packets, numPackets);
-            free(packets);
+            printf("entrou\n");
+            sendFileOverUDP(ip);
             break;
         }
         default:
             printf("Operação inválida!\n");
-    }
+            sendFileOverUDP(ip);
 
+    }
     return 0;
 }
 
