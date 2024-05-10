@@ -34,6 +34,7 @@ typedef struct
 {
     int sequenceNumber;
     char data[MAX_PACKETS];
+    int size;
 } Packet;
 
 char *intToChar(int num)
@@ -371,8 +372,7 @@ int comparePackets(const void *a, const void *b)
     return packetA->sequenceNumber - packetB->sequenceNumber;
 }
 
-
-void receiveFileOverUDP() {
+/*void receiveFileOverUDP() {
     FILE *file;
     struct sockaddr_in serverAddr, clientAddr;
     Packet *packets = malloc(3000 * sizeof(Packet)); // Dynamically allocate memory for packets
@@ -440,7 +440,89 @@ void receiveFileOverUDP() {
     fclose(file);
     close(sockfd);
     free(packets); // Free dynamically allocated memory
+}*/
+
+void receiveFileOverUDP() {
+    FILE *file;
+    struct sockaddr_in serverAddr, clientAddr;
+    Packet *packets = malloc(3000 * sizeof(Packet)); // Dynamically allocate memory for packets
+    socklen_t clientAddrLen = sizeof(clientAddr);
+    int packetCount = 0;
+
+    // Create UDP socket
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("Error creating socket");
+        free(packets); // Free dynamically allocated memory
+        return;
+    }
+
+    // Set up server address
+    memset(&serverAddr, 0, sizeof(serverAddr));
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+    serverAddr.sin_port = htons(4950);
+
+    // Bind socket to port
+    if (bind(sockfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+        perror("Error binding socket");
+        close(sockfd);
+        free(packets); // Free dynamically allocated memory
+        return;
+    }
+
+    // Open file for writing
+    file = fopen("received_music.mp3", "wb");
+    if (!file) {
+        perror("Error opening file for writing");
+        close(sockfd);
+        free(packets); // Free dynamically allocated memory
+        return;
+    }
+
+    // Receive file data with sequence numbers
+    while (1) {
+        ssize_t bytesReceived = recvfrom(sockfd, &packets[packetCount], sizeof(Packet), 0, (struct sockaddr *)&clientAddr, &clientAddrLen);
+        //printf("Received packet %d\n", packets[packetCount].sequenceNumber);
+        // print bytes received
+        //printf("Bytes received: %ld\n", bytesReceived);
+        if (bytesReceived < 0) {
+            // perror("Error receiving data");
+            break;
+        }
+        if (packets[packetCount].sequenceNumber == -1) {
+            // Remove the last packet
+            packetCount--;
+            break;
+        }
+        if (bytesReceived == 0) {
+            printf("File transfer complete.\n");
+            break;
+        }
+        else {
+            packets[packetCount].size = bytesReceived - sizeof(int); // Store the actual size of received data
+            packetCount++; // Increment after receiving data
+        }
+    }
+
+    // Sort packets based on sequence numbers
+    qsort(packets, packetCount, sizeof(Packet), comparePackets);
+
+    // Write sorted packets to file
+    for (int i = 0; i < packetCount; i++) {
+        fwrite(packets[i].data, 1, packets[i].size, file); // Write the correct number of bytes
+        //printf("Writing packet %d to file\n", packets[i].sequenceNumber); // Print the sequence number of the packet being written
+    }
+
+    printf("Received and wrote %d packets\n", packetCount);
+
+    // Close file and socket
+    fclose(file);
+    close(sockfd);
+    free(packets); // Free dynamically allocated memory
 }
+
+
 
 
 // Função para fazer o download de uma música via UDP
