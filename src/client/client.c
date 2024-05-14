@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <time.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/types.h>
@@ -20,6 +22,8 @@
 #define TRUE 1
 #define FALSE 0
 #define MYPORT "4950" // the port server will send UDP data
+
+volatile int countdown_complete = 0;
 struct Music
 {
     int id;
@@ -36,6 +40,23 @@ typedef struct
     char data[MAX_PACKETS];
     int size;
 } Packet;
+
+void* countdown_30_seconds(void* arg) {
+    time_t start_time = time(NULL); // Get the current time
+    time_t end_time = start_time + 30; // Set the end time to 30 seconds later
+
+    while (time(NULL) < end_time) {
+        // Calculate remaining time
+        int remaining_time = (int)(end_time - time(NULL));
+        printf("Time remaining: %d seconds\r", remaining_time);
+        fflush(stdout); // Flush the output buffer to ensure timely printing
+        sleep(1); // Sleep for 1 second
+    }
+
+    printf("\nCountdown completed!\n");
+    countdown_complete = 1; // Signal that the countdown is complete
+    return NULL;
+}
 
 char *intToChar(int num)
 {
@@ -448,6 +469,7 @@ void receiveFileOverUDP() {
     Packet *packets = malloc(3000 * sizeof(Packet)); // Dynamically allocate memory for packets
     socklen_t clientAddrLen = sizeof(clientAddr);
     int packetCount = 0;
+    pthread_t countdown_thread;
 
     // Create UDP socket
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -480,8 +502,15 @@ void receiveFileOverUDP() {
         return;
     }
 
+        // Create the countdown thread
+    if (pthread_create(&countdown_thread, NULL, countdown_30_seconds, NULL)) {
+        fprintf(stderr, "Error creating thread\n");
+        return;
+    }
+
+
     // Receive file data with sequence numbers
-    while (1) {
+    while (!countdown_complete) {
         ssize_t bytesReceived = recvfrom(sockfd, &packets[packetCount], sizeof(Packet), 0, (struct sockaddr *)&clientAddr, &clientAddrLen);
         //printf("Received packet %d\n", packets[packetCount].sequenceNumber);
         // print bytes received
@@ -504,6 +533,7 @@ void receiveFileOverUDP() {
             packetCount++; // Increment after receiving data
         }
     }
+    pthread_join(countdown_thread, NULL);
 
     // Sort packets based on sequence numbers
     qsort(packets, packetCount, sizeof(Packet), comparePackets);
