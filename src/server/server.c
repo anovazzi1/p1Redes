@@ -486,12 +486,13 @@ int sendDataUDP(char *ip, char *data)
     return 0;
 }
 
-void sendFileOverUDP(const char *ipAddress, int msc,char*porta,int sockfd) {
+void sendFileOverUDP(const char *ipAddress, int msc,char*porta,int sock) {
     FILE *file;
     struct sockaddr_in serverAddr;
     char buffer[MAXBUFLEN];
     ssize_t bytesRead;
-    int sequenceNumber = 0;    
+    int sequenceNumber = 0;
+    long size, original_position;    
     // Open the file
 
 
@@ -510,6 +511,19 @@ void sendFileOverUDP(const char *ipAddress, int msc,char*porta,int sockfd) {
         perror("Error opening file");
         return;
     }
+            // Get the current position
+    original_position = ftell(file);
+
+    // Seek to the end of the file
+    fseek(file, 0, SEEK_END);
+
+    // Get the current position (which is the size of the file)
+    size = ftell(file);
+
+    // Return to the original position
+    fseek(file, original_position, SEEK_SET);
+    sendData(sock,longToString(size));
+
 
     // Create UDP socket
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -522,7 +536,7 @@ void sendFileOverUDP(const char *ipAddress, int msc,char*porta,int sockfd) {
     // Set up server address
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(CLIENTPORT);
+    serverAddr.sin_port = htons(atoi(porta));
     inet_pton(AF_INET, ipAddress, &serverAddr.sin_addr);
 
     // Send file data with sequence numbers
