@@ -486,7 +486,7 @@ int sendDataUDP(char *ip, char *data)
     return 0;
 }
 
-void sendFileOverUDP(const char *ipAddress, int msc) {
+void sendFileOverUDP(const char *ipAddress, int msc,char*porta,int sockfd) {
     FILE *file;
     struct sockaddr_in serverAddr;
     char buffer[MAXBUFLEN];
@@ -556,6 +556,8 @@ int handleData(char *mensagem,int sockfd,char*ip)
     char lenbyte[3]; // Será o tamanho máximo de 2 dígitos + caractere nulo
     char op[2]; // Será o tamanho máximo de 1 dígito + caractere nulo
     char dados[100]; // Ajuste o tamanho conforme necessário
+    char id[100];
+    char porta[100];
     
     // Usando sscanf para dividir a string
     sscanf(mensagem, "%[^|]|%[^|]|%[^\n]", lenbyte, op, dados);
@@ -615,13 +617,12 @@ int handleData(char *mensagem,int sockfd,char*ip)
             break;
         }
         case 8: {
-            printf("entrou\n");
-            sendFileOverUDP(ip, atoi(dados));
+            sscanf(dados, "%s|%s", id, porta);
+            sendFileOverUDP(ip, atoi(id), porta,sockfd);
             break;
         }
         default:
             printf("Operação inválida!\n");
-            sendFileOverUDP(ip, atoi(dados));
 
     }
     return 0;
