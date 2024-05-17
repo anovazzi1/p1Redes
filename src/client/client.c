@@ -537,11 +537,11 @@ int downloadSong(int sockfd)
         scanf("%d", &songId);
         if (songId == 7)
         {
-            sendData(sockfd, "8|7");
+            sendData(sockfd, "8|7|4950");
             break;
         } else if (songId == 6)
         {
-            sendData(sockfd, "8|6");
+            sendData(sockfd, "8|6|4950");
             break;
         }
         printf("Song not avaliable for download\n");
@@ -549,12 +549,6 @@ int downloadSong(int sockfd)
     printf("Downloading song with id %d\n", songId);
     
     receiveFileOverUDP();
-
-    // // Recebe a música como pacotes UDP
-    // receivePacketsUDP(sockfd);
-
-    // // Reconstrói o arquivo MP3 a partir dos pacotes
-    // reconstructFile("downloaded.mp3");
 
     return 0;
 }
