@@ -53,6 +53,19 @@ struct Music {
     int ano;
 };
 
+char* longToString(long num) {
+    // Determine the size of the string
+    int strSize = snprintf(NULL, 0, "%ld", num) + 1; // +1 for the null terminator
+
+    // Allocate memory for the string
+    char *str = (char*)malloc(strSize);
+
+    // Convert the long to string
+    snprintf(str, strSize, "%ld", num);
+
+    return str;
+}
+
 
 // Função para ler músicas do arquivo CSV e carregá-las na memória
 int ler_musicas(struct Music songs[]) {
@@ -495,8 +508,6 @@ void sendFileOverUDP(const char *ipAddress, int msc,char*porta,int sock) {
     long size, original_position;    
     // Open the file
 
-
-
     if( msc == 6){
         file = fopen("titanium-170190.mp3", "rb");
 
@@ -631,7 +642,9 @@ int handleData(char *mensagem,int sockfd,char*ip)
             break;
         }
         case 8: {
-            sscanf(dados, "%s|%s", id, porta);
+            //dados format id|porta
+            // get id
+            sscanf(dados, "%[^|]|%[^\n]", id, porta);
             sendFileOverUDP(ip, atoi(id), porta,sockfd);
             break;
         }
