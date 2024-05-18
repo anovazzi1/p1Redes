@@ -10,16 +10,14 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <sys/time.h>
 
-#define MAXBUFLEN 1024
-#define MAX_PACKET_SIZE 1024
-
-#define MAX_PACKETS 1024
-
+#define TIMEOUT 2 // Timeout em segundos
+#define MAXBUFLEN 2048
+#define MAX_PACKETS 2048
 #define SERVERPORT "4950" // the port users will be connecting to
 #define TRUE 1
 #define FALSE 0
-#define MYPORT "4950" // the port server will send UDP data
 struct Music
 {
     int id;
@@ -34,6 +32,7 @@ typedef struct
 {
     int sequenceNumber;
     char data[MAX_PACKETS];
+    int size;
 } Packet;
 
 char *intToChar(int num)
@@ -291,78 +290,6 @@ int listAllSongInformation(int sockfd)
     printf("==============\n");
 }
 
-int receiveUDP()
-{
-    char buf[MAXBUFLEN];
-    int sockfd;
-    struct addrinfo hints, *servinfo, *p;
-    int rv;
-    int numbytes;
-    struct sockaddr_storage their_addr;
-    socklen_t addr_len;
-    char s[INET6_ADDRSTRLEN];
-
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET; // set to AF_INET to use IPv4
-    hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = AI_PASSIVE; // use my IP
-    // MYPORT is the port the server will send data to
-    if ((rv = getaddrinfo(NULL, MYPORT, &hints, &servinfo)) != 0)
-    {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        return 1;
-    }
-
-    // loop through all the results and bind to the first we can
-    for (p = servinfo; p != NULL; p = p->ai_next)
-    {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype,
-                             p->ai_protocol)) == -1)
-        {
-            perror("listener: socket");
-            continue;
-        }
-
-        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1)
-        {
-            close(sockfd);
-            perror("listener: bind");
-            continue;
-        }
-
-        break;
-    }
-
-    if (p == NULL)
-    {
-        fprintf(stderr, "listener: failed to bind socket\n");
-        return 2;
-    }
-
-    freeaddrinfo(servinfo);
-
-    printf("listener: waiting to recvfrom...\n");
-
-    addr_len = sizeof their_addr;
-    if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN - 1, 0,
-                             (struct sockaddr *)&their_addr, &addr_len)) == -1)
-    {
-        perror("recvfrom");
-        exit(1);
-    }
-
-    printf("listener: got packet from %s\n",
-           inet_ntop(their_addr.ss_family,
-                     get_in_addr((struct sockaddr *)&their_addr),
-                     s, sizeof s));
-    printf("listener: packet is %d bytes long\n", numbytes);
-    buf[numbytes] = '\0';
-    printf("listener: packet contains \"%s\"\n", buf);
-    close(sockfd);
-
-    return 1;
-}
-
 // Comparator function for qsort to sort packets by sequence number
 int comparePackets(const void *a, const void *b)
 {
@@ -371,19 +298,18 @@ int comparePackets(const void *a, const void *b)
     return packetA->sequenceNumber - packetB->sequenceNumber;
 }
 
-void receiveFileOverUDP()
-{
+void receiveFileOverUDP() {
     FILE *file;
     struct sockaddr_in serverAddr, clientAddr;
-    Packet packets[3000];
+    Packet *packets = malloc(3000 * sizeof(Packet)); // Dynamically allocate memory for packets
     socklen_t clientAddrLen = sizeof(clientAddr);
     int packetCount = 0;
 
     // Create UDP socket
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0)
-    {
+    if (sockfd < 0) {
         perror("Error creating socket");
+        free(packets); // Free dynamically allocated memory
         return;
     }
 
@@ -394,95 +320,104 @@ void receiveFileOverUDP()
     serverAddr.sin_port = htons(4950);
 
     // Bind socket to port
-    if (bind(sockfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0)
-    {
+    if (bind(sockfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
         perror("Error binding socket");
         close(sockfd);
+        free(packets); // Free dynamically allocated memory
         return;
     }
 
     // Open file for writing
     file = fopen("received_music.mp3", "wb");
-    if (!file)
-    {
+    if (!file) {
         perror("Error opening file for writing");
         close(sockfd);
+        free(packets); // Free dynamically allocated memory
         return;
     }
 
+    // Set up timeout
+    struct timeval tv;
+    tv.tv_sec = TIMEOUT;
+    tv.tv_usec = 0;
+
+    // File descriptor set
+    fd_set readfds;
+
     // Receive file data with sequence numbers
-    while (1)
-    {
-        ssize_t bytesReceived = recvfrom(sockfd, &packets[packetCount], sizeof(Packet), 0, (struct sockaddr *)&clientAddr, &clientAddrLen);
-        printf("Received packet %d\n", packets[packetCount].sequenceNumber);
-        // print bytes received
-        printf("Bytes received: %ld\n", bytesReceived);
-        if (bytesReceived < 0)
-        {
-            // perror("Error receiving data");
+    while (1) {
+        // Clear the file descriptor set
+        FD_ZERO(&readfds);
+        // Add socket to file descriptor set
+        FD_SET(sockfd, &readfds);
+
+        // Wait for data with timeout
+        int rv = select(sockfd + 1, &readfds, NULL, NULL, &tv);
+
+        if (rv == -1) {
+            perror("select"); // Error occurred in select()
             break;
-        }
-        if(packets[packetCount].sequenceNumber==-1){
-            //remove the last packet
-            packetCount--;
+        } else if (rv == 0) {
+            printf("Download completed, no more data received\n");
             break;
+        } else {
+            // Data is available, receive it
+            ssize_t bytesReceived = recvfrom(sockfd, &packets[packetCount], sizeof(Packet), 0, (struct sockaddr *)&clientAddr, &clientAddrLen);
+            if (bytesReceived < 0) {
+                perror("Error receiving data");
+                break;
+            }
+            if (bytesReceived == 0) {
+                printf("File transfer complete.\n");
+                break;
+            } else {
+                packets[packetCount].size = bytesReceived - sizeof(int); // Store the actual size of received data
+                packetCount++; // Increment after receiving data
+            }
         }
-        if (bytesReceived == 0)
-        {
-            printf("File transfer complete.\n");
-            break;
-        }
-        else
-        {
-            packetCount++;
-        }
-        fwrite(packets[packetCount].data,1,  bytesReceived - sizeof(int), file);
     }
-    printf("Received %d packets\n", packetCount);
 
     // Sort packets based on sequence numbers
-    // qsort(packets, packetCount, sizeof(Packet), comparePackets);
-
-
+    qsort(packets, packetCount, sizeof(Packet), comparePackets);
 
     // Write sorted packets to file
-    // for (int i = 0; i < packetCount; i++)
-    // {
-    //     printf("Writing packet %d to file\n", packets[i].sequenceNumber);
-    //     //print data len
-    //     printf("Data len: %ld\n", strlen(packets[i].data));
-    // }
+    for (int i = 0; i < packetCount; i++) {
+        fwrite(packets[i].data, 1, packets[i].size, file); // Write the correct number of bytes
+        //printf("Writing packet %d to file\n", packets[i].sequenceNumber); // Print the sequence number of the packet being written
+    }
+
+    printf("Received and wrote %d packets\n", packetCount);
 
     // Close file and socket
     fclose(file);
     close(sockfd);
+    free(packets); // Free dynamically allocated memory
 }
 
 // Função para fazer o download de uma música via UDP
 int downloadSong(int sockfd)
 {
-    printf("Download a song listed bellow (only music with id 7 is avaliable) \n");
+    printf("Download a song listed bellow (only music with id 7 or 6 are avaliable) \n");
     listAllSongInformation(sockfd);
     int songId;
     while (TRUE)
     {
-        printf("Enter Song:\n");
+        printf("Enter Song ID:\n");
         scanf("%d", &songId);
         if (songId == 7)
         {
+            sendData(sockfd, "8|7|4950");
+            break;
+        } else if (songId == 6)
+        {
+            sendData(sockfd, "8|6|4950");
             break;
         }
         printf("Song not avaliable for download\n");
     }
     printf("Downloading song with id %d\n", songId);
-    sendData(sockfd, "8|7");
+    
     receiveFileOverUDP();
-
-    // // Recebe a música como pacotes UDP
-    // receivePacketsUDP(sockfd);
-
-    // // Reconstrói o arquivo MP3 a partir dos pacotes
-    // reconstructFile("downloaded.mp3");
 
     return 0;
 }

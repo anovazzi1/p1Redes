@@ -10,18 +10,12 @@
 #include <netdb.h>
 #include <signal.h>
 #include <sys/wait.h>
-#include <math.h> // Adicionado para log10
+#include <math.h>
 
 #define MAX_SONGS 100
-#define CHUNK_SIZE 1024
-
 #define MYPORT "4950" // the port users will be connecting to
-
-#define MAXBUFLEN 1024
-
+#define MAXBUFLEN 2048
 #define BACKLOG 10 // how many pending connections queue will hold
-#define CLIENTPORT 4950 // Porta do cliente
-#define MAX_PACKET_SIZE 1024
 #define FILENAME "songs.csv" // Nome do arquivo CSV
 
 int sendall(int s, char *buf, int *len)
@@ -57,6 +51,19 @@ struct Music {
     char refrao[256]; // Novo campo adicionado para o refrão
     int ano;
 };
+
+char* longToString(long num) {
+    // Determine the size of the string
+    int strSize = snprintf(NULL, 0, "%ld", num) + 1; // +1 for the null terminator
+
+    // Allocate memory for the string
+    char *str = (char*)malloc(strSize);
+
+    // Convert the long to string
+    snprintf(str, strSize, "%ld", num);
+
+    return str;
+}
 
 
 // Função para ler músicas do arquivo CSV e carregá-las na memória
@@ -279,11 +286,6 @@ char* listar_musicas_tipo_string(char* tipo) {
     return result;
 }
 
-
-
-
-
-
 // Função para listar informações de uma música pelo ID
 void listar_informacoes_musica(int id) {
     struct Music songs[MAX_SONGS];
@@ -333,7 +335,6 @@ void listar_informacoes_todas_musicas() {
         printf("Nenhuma música encontrada.\n");
     }
 }
-
 
 // Função para listar informações de uma música pelo ID em uma string
 char* listar_informacoes_musica_string(int id) {
@@ -413,9 +414,6 @@ char* listar_musicas_ano_string(int ano) {
     return result;
 }
 
-
-
-
 void sigchld_handler(int s)
 {
 	(void)s; // quiet unused variable warning
@@ -440,69 +438,43 @@ void *get_in_addr(struct sockaddr *sa)
 	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
-int sendDataUDP(char *ip, char *data)
-{
-    int sockfd;
-    struct addrinfo hints, *servinfo, *p;
-    int rv;
-    int numbytes;
-
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET; // set to AF_INET to use IPv4
-    hints.ai_socktype = SOCK_DGRAM;
-
-    if ((rv = getaddrinfo(ip, MYPORT, &hints, &servinfo)) != 0)
-    {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        return 1;
-    }
-
-    // loop through all the results and make a socket
-    for (p = servinfo; p != NULL; p = p->ai_next)
-    {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype,
-                             p->ai_protocol)) == -1)
-        {
-            perror("talker: socket");
-            continue;
-        }
-
-        break;
-    }
-
-    if (p == NULL)
-    {
-        fprintf(stderr, "talker: failed to create socket\n");
-        return 2;
-    }
-
-    if ((numbytes = sendto(sockfd, data, strlen(data), 0,
-                           p->ai_addr, p->ai_addrlen)) == -1)
-    {
-        perror("talker: sendto");
-        exit(1);
-    }
-
-    freeaddrinfo(servinfo);
-
-    printf("talker: sent %d bytes to %s\n", numbytes, ip);
-    close(sockfd);
-
-    return 0;
-}
-
-void sendFileOverUDP(const char *ipAddress) {
+//função para enviar arquivos via UDP
+void sendFileOverUDP(const char *ipAddress, int msc,char*porta,int sock) {
     FILE *file;
     struct sockaddr_in serverAddr;
     char buffer[MAXBUFLEN];
     ssize_t bytesRead;
-    int sequenceNumber = 0;    
+    int sequenceNumber = 0;
+    long size, original_position;    
     // Open the file
-    file = fopen("better-day-186374.mp3", "rb");
+
+    if( msc == 6){
+        file = fopen("titanium-170190.mp3", "rb");
+
+    } else if ( msc == 7) {
+        file = fopen("better-day-186374.mp3", "rb");
+    }
+
+
+    //file = fopen("titanium-170190.mp3", "rb");
+    //file = fopen("better-day-186374.mp3", "rb");
     if (!file) {
         perror("Error opening file");
         return;
     }
+            // Get the current position
+    original_position = ftell(file);
+
+    // Seek to the end of the file
+    fseek(file, 0, SEEK_END);
+
+    // Get the current position (which is the size of the file)
+    size = ftell(file);
+
+    // Return to the original position
+    fseek(file, original_position, SEEK_SET);
+    sendData(sock,longToString(size));
+
 
     // Create UDP socket
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -515,23 +487,18 @@ void sendFileOverUDP(const char *ipAddress) {
     // Set up server address
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(CLIENTPORT);
+    serverAddr.sin_port = htons(atoi(porta));
     inet_pton(AF_INET, ipAddress, &serverAddr.sin_addr);
 
     // Send file data with sequence numbers
-    while ((bytesRead = fread(buffer, 1, MAXBUFLEN, file)) > 0) {
+    while ((bytesRead = fread(buffer + sizeof(int), 1, MAXBUFLEN - sizeof(int), file)) > 0) {
         // Add sequence number to the beginning of the buffer
         memcpy(buffer, &sequenceNumber, sizeof(int));
-        printf("Sending packet %d\n", sequenceNumber);
-        printf("Bytes read: %ld\n", bytesRead);
+        //printf("Sending packet %d\n", sequenceNumber);
+        //printf("Bytes read: %ld\n", bytesRead);
         sendto(sockfd, buffer, bytesRead + sizeof(int), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
         sequenceNumber++;
     }
-
-    // Send a final packet with sequence number -1 to indicate end of file
-    int endOfTransmission = -1;
-    memcpy(buffer, &endOfTransmission, sizeof(int));
-    sendto(sockfd, buffer, sizeof(int), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 
     // Close file and socket
     fclose(file);
@@ -549,6 +516,8 @@ int handleData(char *mensagem,int sockfd,char*ip)
     char lenbyte[3]; // Será o tamanho máximo de 2 dígitos + caractere nulo
     char op[2]; // Será o tamanho máximo de 1 dígito + caractere nulo
     char dados[100]; // Ajuste o tamanho conforme necessário
+    char id[100];
+    char porta[100];
     
     // Usando sscanf para dividir a string
     sscanf(mensagem, "%[^|]|%[^|]|%[^\n]", lenbyte, op, dados);
@@ -608,18 +577,18 @@ int handleData(char *mensagem,int sockfd,char*ip)
             break;
         }
         case 8: {
-            printf("entrou\n");
-            sendFileOverUDP(ip);
+            //dados format id|porta
+            // get id
+            sscanf(dados, "%[^|]|%[^\n]", id, porta);
+            sendFileOverUDP(ip, atoi(id), porta,sockfd);
             break;
         }
         default:
             printf("Operação inválida!\n");
-            sendFileOverUDP(ip);
 
     }
     return 0;
 }
-
 
 int main(void)
 {
