@@ -397,7 +397,7 @@ void receiveFileOverUDP() {
 // Função para fazer o download de uma música via UDP
 int downloadSong(int sockfd)
 {
-    printf("Download a song listed bellow (only music with id 7 is avaliable) \n");
+    printf("Download a song listed bellow (only music with id 7 or 6 are avaliable) \n");
     listAllSongInformation(sockfd);
     int songId;
     while (TRUE)
