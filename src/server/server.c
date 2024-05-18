@@ -560,11 +560,6 @@ void sendFileOverUDP(const char *ipAddress, int msc,char*porta,int sock) {
         sequenceNumber++;
     }
 
-    // Send a final packet with sequence number -1 to indicate end of file
-    int endOfTransmission = -1;
-    memcpy(buffer, &endOfTransmission, sizeof(int));
-    sendto(sockfd, buffer, sizeof(int), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
-
     // Close file and socket
     fclose(file);
     close(sockfd);

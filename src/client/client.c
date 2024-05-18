@@ -10,6 +10,9 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <sys/time.h>
+
+#define TIMEOUT 2 // Timeout duration in seconds
 
 #define MAXBUFLEN 2048
 
@@ -480,28 +483,44 @@ void receiveFileOverUDP() {
         return;
     }
 
+    // Set up timeout
+    struct timeval tv;
+    tv.tv_sec = TIMEOUT;
+    tv.tv_usec = 0;
+
+    // File descriptor set
+    fd_set readfds;
+
     // Receive file data with sequence numbers
     while (1) {
-        ssize_t bytesReceived = recvfrom(sockfd, &packets[packetCount], sizeof(Packet), 0, (struct sockaddr *)&clientAddr, &clientAddrLen);
-        //printf("Received packet %d\n", packets[packetCount].sequenceNumber);
-        // print bytes received
-        //printf("Bytes received: %ld\n", bytesReceived);
-        if (bytesReceived < 0) {
-            // perror("Error receiving data");
+        // Clear the file descriptor set
+        FD_ZERO(&readfds);
+        // Add socket to file descriptor set
+        FD_SET(sockfd, &readfds);
+
+        // Wait for data with timeout
+        int rv = select(sockfd + 1, &readfds, NULL, NULL, &tv);
+
+        if (rv == -1) {
+            perror("select"); // Error occurred in select()
             break;
-        }
-        if (packets[packetCount].sequenceNumber == -1) {
-            // Remove the last packet
-            packetCount--;
+        } else if (rv == 0) {
+            printf("Timeout occurred! No data received for %d seconds.\n", TIMEOUT);
             break;
-        }
-        if (bytesReceived == 0) {
-            printf("File transfer complete.\n");
-            break;
-        }
-        else {
-            packets[packetCount].size = bytesReceived - sizeof(int); // Store the actual size of received data
-            packetCount++; // Increment after receiving data
+        } else {
+            // Data is available, receive it
+            ssize_t bytesReceived = recvfrom(sockfd, &packets[packetCount], sizeof(Packet), 0, (struct sockaddr *)&clientAddr, &clientAddrLen);
+            if (bytesReceived < 0) {
+                perror("Error receiving data");
+                break;
+            }
+            if (bytesReceived == 0) {
+                printf("File transfer complete.\n");
+                break;
+            } else {
+                packets[packetCount].size = bytesReceived - sizeof(int); // Store the actual size of received data
+                packetCount++; // Increment after receiving data
+            }
         }
     }
 
